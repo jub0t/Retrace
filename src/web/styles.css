@@ -1,0 +1,61 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-canvas: #eceef1;
+  --color-ink: #1b1d21;
+  --color-muted: #6b7280;
+  --color-faint: #9aa1ab;
+  --color-line: #e4e6ea;
+  --color-hover: #f2f3f5;
+  --color-paper: #f8f9fa;
+  --color-accent: #5b5bd6;
+  --color-accent-strong: #4a4ac4;
+  --color-accent-soft: #ececfc;
+
+  --shadow-island: 0 0 0 1px rgb(15 20 30 / 0.05), 0 2px 4px rgb(15 20 30 / 0.04), 0 8px 24px rgb(15 20 30 / 0.08);
+  --shadow-pop: 0 0 0 1px rgb(15 20 30 / 0.06), 0 12px 32px rgb(15 20 30 / 0.16);
+  --shadow-thumb: 0 0 0 1.5px var(--color-accent), 0 1px 3px rgb(0 0 0 / 0.2);
+  --shadow-thumb-active: 0 0 0 1.5px var(--color-accent), 0 0 0 6px rgb(91 91 214 / 0.2);
+
+  --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-pop-in: pop-in 140ms var(--ease-snappy);
+  --animate-fade-in: fade-in 140ms ease-out;
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-canvas);
+  }
+  body {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
