@@ -15,7 +15,7 @@
   <a href="#use-it-with-ai-mcp"><img src="https://img.shields.io/badge/MCP-built%20in-5B5BD6?style=flat&labelColor=212123" alt="MCP server built in" /></a>
   <img src="https://img.shields.io/badge/Runs%20in-the%20browser-5B5BD6?style=flat&labelColor=212123" alt="Runs in the browser" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat&logo=typescript&logoColor=F8F8F8&labelColor=212123" alt="TypeScript" />
-  <a href="https://github.com/jub0t/drawmation/pulls"><img src="https://img.shields.io/badge/PRs-welcome-2F9E44?style=flat&labelColor=212123" alt="PRs welcome" /></a>
+  <a href="https://github.com/jub0t/Retrace/pulls"><img src="https://img.shields.io/badge/PRs-welcome-2F9E44?style=flat&labelColor=212123" alt="PRs welcome" /></a>
 </p>
 
 </div>
@@ -57,8 +57,8 @@ That is the actual animated SVG export: no video and no script. It's one self-pl
 You need [Node.js](https://nodejs.org/) 20 or newer and [pnpm](https://pnpm.io/) (npm works too).
 
 ```sh
-git clone https://github.com/jub0t/drawmation.git
-cd drawmation
+git clone https://github.com/jub0t/Retrace.git
+cd Retrace
 pnpm install
 pnpm dev          # the editor, at http://localhost:5173
 ```
@@ -83,7 +83,7 @@ pnpm build:mcp
 **Claude Code** picks it up automatically inside this repo (see [.mcp.json](.mcp.json)). To use it from anywhere:
 
 ```sh
-claude mcp add retrace -- node /absolute/path/to/drawmation/dist-mcp/server.js
+claude mcp add retrace -- node /absolute/path/to/Retrace/dist-mcp/server.js
 ```
 
 **Claude Desktop, Cursor and other MCP clients:**
@@ -93,7 +93,7 @@ claude mcp add retrace -- node /absolute/path/to/drawmation/dist-mcp/server.js
   "mcpServers": {
     "retrace": {
       "command": "node",
-      "args": ["/absolute/path/to/drawmation/dist-mcp/server.js"]
+      "args": ["/absolute/path/to/Retrace/dist-mcp/server.js"]
     }
   }
 }
@@ -164,20 +164,20 @@ A project is plain JSON: `steps[]`, each holding `strokes[]`, each storing point
 ## How to contribute
 
 > [!IMPORTANT]
-> The best way to help is to make something with Retrace, then tell us where it fought you. [Open an issue](https://github.com/jub0t/drawmation/issues) with what you tried and what you expected.
+> The best way to help is to make something with Retrace, then tell us where it fought you. [Open an issue](https://github.com/jub0t/Retrace/issues) with what you tried and what you expected.
 >
 > Ready to write code? Run `pnpm dev`, keep `pnpm typecheck` green, and keep the core free of DOM APIs so the editor and the MCP server stay in sync. New shapes, poses, glyphs and brushes are especially welcome: they live in [src/core/](src/core/).
 
 ## Star History
 
-<a href="https://www.star-history.com/#jub0t/drawmation&Date">
-  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=jub0t/drawmation&type=Date" />
+<a href="https://www.star-history.com/#jub0t/retrace&Date">
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=jub0t/retrace&type=Date" />
 </a>
 
 ## Contributors
 
-<a href="https://github.com/jub0t/drawmation/graphs/contributors">
-  <img alt="Contributors" src="https://contrib.rocks/image?repo=jub0t/drawmation" />
+<a href="https://github.com/jub0t/Retrace/graphs/contributors">
+  <img alt="Contributors" src="https://contrib.rocks/image?repo=jub0t/retrace" />
 </a>
 
 ## License
