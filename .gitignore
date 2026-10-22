@@ -137,4 +137,4 @@ dist
 
 # MCP server build
 dist-mcp
-*.drawmation.json.*.tmp
+*.retrace.json.*.tmp

@@ -1,14 +1,14 @@
 <p align="center">
-  <img src="assets/logo-light.svg#gh-light-mode-only" alt="Drawmation" width="96" />
-  <img src="assets/logo-dark.svg#gh-dark-mode-only" alt="Drawmation" width="96" />
+  <img src="assets/logo-light.svg#gh-light-mode-only" alt="Retrace" width="96" />
+  <img src="assets/logo-dark.svg#gh-dark-mode-only" alt="Retrace" width="96" />
 </p>
 
-<h1 align="center">Drawmation</h1>
+<h1 align="center">Retrace</h1>
 <h3 align="center">Draw step by step. Play it back like a human drew it.</h3>
 
 <div align="center">
 
-<img src="assets/editor.png" alt="The Drawmation editor showing its hand-lettered alphabet and four stick figures" width="100%" />
+<img src="assets/editor.png" alt="The Retrace editor showing its hand-lettered alphabet and four stick figures" width="100%" />
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-5B5BD6?style=flat&labelColor=212123" alt="License: Apache-2.0" /></a>
@@ -22,11 +22,11 @@
 
 ## About
 
-Drawmation is a free, open-source tool for hand-drawn explainer animations: the scrawled-marker, stick-figure style of [cpu.land](https://cpu.land/) and countless YouTube explainers.
+Retrace is a free, open-source tool for hand-drawn explainer animations: the scrawled-marker, stick-figure style of [cpu.land](https://cpu.land/) and countless YouTube explainers.
 
 You draw one stroke, add a step, draw the next. Every stroke keeps the path and timing of your hand, so playback redraws it exactly the way you drew it. Nothing gets tweened and nothing looks like a template. It looks like a person drew it, because one did.
 
-Or an AI did. Drawmation ships an **MCP server**, so Claude and other agents can draw too. A humanizer gives every generated line a natural wobble, overshoot and pen speed. Everything in the screenshot above was drawn by that engine from a few lines of code ([scripts/demo.ts](scripts/demo.ts)). The lettering is Drawmation's own single-stroke handwriting, and no font file was involved.
+Or an AI did. Retrace ships an **MCP server**, so Claude and other agents can draw too. A humanizer gives every generated line a natural wobble, overshoot and pen speed. Everything in the screenshot above was drawn by that engine from a few lines of code ([scripts/demo.ts](scripts/demo.ts)). The lettering is Retrace's own single-stroke handwriting, and no font file was involved.
 
 **Good for:** YouTube explainers, thumbnails, tutorials, course videos, blog illustrations, and anything that should feel made by hand.
 
@@ -36,7 +36,7 @@ Or an AI did. Drawmation ships an **MCP server**, so Claude and other agents can
   <img src="assets/demo.svg" alt="The thumbnail above, drawing itself stroke by stroke" width="100%" />
 </p>
 
-That is the actual animated SVG export: no video and no script. It's one self-playing file you can drop into any web page. Open [assets/demo.drawmation.json](assets/demo.drawmation.json) in the editor to see how it was built, step by step.
+That is the actual animated SVG export: no video and no script. It's one self-playing file you can drop into any web page. Open [assets/demo.retrace.json](assets/demo.retrace.json) in the editor to see how it was built, step by step.
 
 ## Highlights
 
@@ -83,7 +83,7 @@ pnpm build:mcp
 **Claude Code** picks it up automatically inside this repo (see [.mcp.json](.mcp.json)). To use it from anywhere:
 
 ```sh
-claude mcp add drawmation -- node /absolute/path/to/drawmation/dist-mcp/server.js
+claude mcp add retrace -- node /absolute/path/to/drawmation/dist-mcp/server.js
 ```
 
 **Claude Desktop, Cursor and other MCP clients:**
@@ -91,7 +91,7 @@ claude mcp add drawmation -- node /absolute/path/to/drawmation/dist-mcp/server.j
 ```json
 {
   "mcpServers": {
-    "drawmation": {
+    "retrace": {
       "command": "node",
       "args": ["/absolute/path/to/drawmation/dist-mcp/server.js"]
     }
@@ -101,7 +101,7 @@ claude mcp add drawmation -- node /absolute/path/to/drawmation/dist-mcp/server.j
 
 Then ask for something like:
 
-> Make a Drawmation explainer in `./fetch.drawmation.json`: a stick figure discovers how a CPU fetches and executes instructions. One idea per step, with a hand-lettered title.
+> Make a Retrace explainer in `./fetch.retrace.json`: a stick figure discovers how a CPU fetches and executes instructions. One idea per step, with a hand-lettered title.
 
 To watch it happen, open the same file in the editor with **Open**. Each time the agent saves, the drawing updates.
 
@@ -164,7 +164,7 @@ A project is plain JSON: `steps[]`, each holding `strokes[]`, each storing point
 ## How to contribute
 
 > [!IMPORTANT]
-> The best way to help is to make something with Drawmation, then tell us where it fought you. [Open an issue](https://github.com/jub0t/drawmation/issues) with what you tried and what you expected.
+> The best way to help is to make something with Retrace, then tell us where it fought you. [Open an issue](https://github.com/jub0t/drawmation/issues) with what you tried and what you expected.
 >
 > Ready to write code? Run `pnpm dev`, keep `pnpm typecheck` green, and keep the core free of DOM APIs so the editor and the MCP server stay in sync. New shapes, poses, glyphs and brushes are especially welcome: they live in [src/core/](src/core/).
 

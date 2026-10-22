@@ -26,7 +26,7 @@ import {
   type Shape,
 } from '../core';
 
-const INSTRUCTIONS = `Drawmation makes hand-drawn explainer animations (think cpu.land: scrawled black marker on off-white, gray annotations, one accent color).
+const INSTRUCTIONS = `Retrace makes hand-drawn explainer animations (think cpu.land: scrawled black marker on off-white, gray annotations, one accent color).
 
 A project is a JSON file of cumulative steps. Each step adds strokes on top of the previous ones; playback redraws every stroke at human hand speed, then holds.
 Canvas: default 1920x1080, origin top-left, units are pixels. Stick figures are ~260px tall by default; leave 80px margins.
@@ -34,7 +34,7 @@ Canvas: default 1920x1080, origin top-left, units are pixels. Stick figures are 
 Workflow: create_project → for each beat of the explanation: draw (with new_step and a label) → render_preview to check the result → fix with remove_last_strokes if needed → export_svg.
 Text: use the text shape for titles and labels (hand-lettered capitals); keep thumbnail titles to a few words at height 90-150.
 Style tips: one idea per step; draw in the order a person would (outline before details, arrow after the things it connects); use ${PALETTE[0]} for main ink, ${PALETTE[1]} for annotations/arrows, and at most one accent (${PALETTE[2]} or ${PALETTE[3]}); marker brush for most things, highlighter (size ~24) to emphasize; vary seed so repeated shapes don't look identical.
-The user can open the same file in the Drawmation web editor (Open → pick the file) to watch changes live.`;
+The user can open the same file in the Retrace web editor (Open → pick the file) to watch changes live.`;
 
 const vec = z.array(z.number()).length(2).describe('[x, y] in project pixels');
 const brushArg = z
@@ -77,15 +77,15 @@ const shapeSchema = z.discriminatedUnion('type', [
   }),
 ]);
 
-const fileArg = z.string().describe('Path to the .drawmation.json project file');
+const fileArg = z.string().describe('Path to the .retrace.json project file');
 
-const server = new McpServer({ name: 'drawmation', version: '0.1.0' }, { instructions: INSTRUCTIONS });
+const server = new McpServer({ name: 'retrace', version: '0.1.0' }, { instructions: INSTRUCTIONS });
 
 server.registerTool(
   'create_project',
   {
     title: 'Create project',
-    description: 'Create a new empty Drawmation project file with one empty step.',
+    description: 'Create a new empty Retrace project file with one empty step.',
     inputSchema: {
       file: fileArg,
       width: z.number().int().positive().optional().describe('Default 1920'),

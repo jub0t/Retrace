@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "drawmation": {
+    "retrace": {
       "command": "node",
       "args": ["dist-mcp/server.js"]
     }

@@ -174,12 +174,12 @@ function logo(ink: string): Project {
   return project;
 }
 
-writeFileSync('assets/specimen.drawmation.json', JSON.stringify(specimen()));
+writeFileSync('assets/specimen.retrace.json', JSON.stringify(specimen()));
 
 const demo = scene();
-writeFileSync('assets/demo.drawmation.json', JSON.stringify(demo));
+writeFileSync('assets/demo.retrace.json', JSON.stringify(demo));
 writeFileSync('assets/demo.svg', renderAnimatedSvg(demo, { tail: 0 }));
 writeFileSync('assets/thumbnail.svg', renderSvg(demo));
 writeFileSync('assets/logo-light.svg', renderSvg(logo(INK), { transparent: true }));
 writeFileSync('assets/logo-dark.svg', renderSvg(logo('#f1f3f5'), { transparent: true }));
-console.log('wrote assets/: specimen.drawmation.json, demo.drawmation.json, demo.svg, thumbnail.svg, logo-light.svg, logo-dark.svg');
+console.log('wrote assets/: specimen.retrace.json, demo.retrace.json, demo.svg, thumbnail.svg, logo-light.svg, logo-dark.svg');

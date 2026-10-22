@@ -7,7 +7,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Drawmation screenshot frame</title>
+    <title>Retrace screenshot frame</title>
     <style>
       html,
       body {
@@ -90,14 +90,14 @@
             <span style="background: #febc2e"></span>
             <span style="background: #28c840"></span>
           </div>
-          <div class="title"><b>Drawmation</b> — specimen.drawmation.json</div>
+          <div class="title"><b>Retrace</b> — specimen.retrace.json</div>
         </div>
-        <iframe id="editor" title="Drawmation editor"></iframe>
+        <iframe id="editor" title="Retrace editor"></iframe>
       </div>
     </div>
     <script>
       const src = new URLSearchParams(location.search).get('src');
-      document.getElementById('editor').src = src || 'http://localhost:5173/?open=/assets/specimen.drawmation.json';
+      document.getElementById('editor').src = src || 'http://localhost:5173/?open=/assets/specimen.retrace.json';
     </script>
   </body>
 </html>

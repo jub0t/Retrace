@@ -22,8 +22,8 @@ interface PickerWindow {
 }
 
 const fs = window as unknown as PickerWindow;
-const TYPES = [{ description: 'Drawmation project', accept: { 'application/json': ['.json'] } }];
-const SUGGESTED_NAME = 'animation.drawmation.json';
+const TYPES = [{ description: 'Retrace project', accept: { 'application/json': ['.json'] } }];
+const SUGGESTED_NAME = 'animation.retrace.json';
 
 let handle: FileHandle | null = null;
 let lastModified = 0;
