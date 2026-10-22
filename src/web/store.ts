@@ -49,8 +49,6 @@ export interface EditorState {
 }
 
 const STORAGE_KEY = 'retrace:project';
-/** Where autosaves lived before the rename to Retrace. */
-const LEGACY_STORAGE_KEY = 'drawmation:project';
 const HISTORY_LIMIT = 200;
 const NO_SELECTION: ReadonlySet<string> = new Set();
 
@@ -330,7 +328,7 @@ function scheduleAutosave() {
 
 function loadAutosave(): Project {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return parseProjectJson(raw);
   } catch {
     // Corrupt or unavailable storage: start fresh.
