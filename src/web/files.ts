@@ -88,6 +88,25 @@ export async function reloadFromDisk(): Promise<void> {
   }
 }
 
+/**
+ * `?open=<url>` loads a project from a link (e.g. an example in the repo), then drops the
+ * parameter so a reload doesn't load it again. Loading is undoable like any open.
+ */
+export async function openFromUrlParam(): Promise<void> {
+  const params = new URLSearchParams(location.search);
+  const url = params.get('open');
+  if (!url) return;
+  params.delete('open');
+  history.replaceState(null, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Couldn't open ${url} (${res.status})`);
+    actions.loadProject(parseProjectJson(await res.text()), null);
+  } catch (err) {
+    reportError(err);
+  }
+}
+
 /** Poll the linked file; reload it if it changed and there are no local edits to lose. */
 export function watchLinkedFile(): () => void {
   const id = setInterval(async () => {

@@ -1,8 +1,6 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg" />
-    <img src="assets/logo-light.svg" alt="Drawmation" width="96" />
-  </picture>
+  <img src="assets/logo-light.svg#gh-light-mode-only" alt="Drawmation" width="96" />
+  <img src="assets/logo-dark.svg#gh-dark-mode-only" alt="Drawmation" width="96" />
 </p>
 
 <h1 align="center">Drawmation</h1>
@@ -10,7 +8,7 @@
 
 <div align="center">
 
-<img src="assets/editor.jpg" alt="The Drawmation editor with a hand-drawn explainer thumbnail" width="100%" />
+<img src="assets/editor.png" alt="The Drawmation editor showing its hand-lettered alphabet and four stick figures" width="100%" />
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-5B5BD6?style=flat&labelColor=212123" alt="License: Apache-2.0" /></a>
@@ -28,7 +26,7 @@ Drawmation is a free, open-source tool for hand-drawn explainer animations: the 
 
 You draw one stroke, add a step, draw the next. Every stroke keeps the path and timing of your hand, so playback redraws it exactly the way you drew it. Nothing gets tweened and nothing looks like a template. It looks like a person drew it, because one did.
 
-Or an AI did. Drawmation ships an **MCP server**, so Claude and other agents can draw too. A humanizer gives every generated line a natural wobble, overshoot and pen speed. The thumbnail above was drawn entirely in code ([scripts/demo.ts](scripts/demo.ts)), hand-lettered title included.
+Or an AI did. Drawmation ships an **MCP server**, so Claude and other agents can draw too. A humanizer gives every generated line a natural wobble, overshoot and pen speed. Everything in the screenshot above was drawn by that engine from a few lines of code ([scripts/demo.ts](scripts/demo.ts)). The lettering is Drawmation's own single-stroke handwriting, and no font file was involved.
 
 **Good for:** YouTube explainers, thumbnails, tutorials, course videos, blog illustrations, and anything that should feel made by hand.
 
@@ -67,7 +65,8 @@ pnpm dev          # the editor, at http://localhost:5173
 
 ```sh
 pnpm build        # static editor in dist/ + MCP server in dist-mcp/
-pnpm demo         # regenerate the README demo from scripts/demo.ts
+pnpm demo         # regenerate the README drawings from scripts/demo.ts
+pnpm screenshot   # re-render assets/editor.png (with pnpm dev running)
 pnpm typecheck
 ```
 

@@ -4,7 +4,10 @@ import { strokeDuration, type Project, type Stroke } from './model';
 export const FPS = 60;
 export const FRAME_MS = 1000 / FPS;
 
-/** Pause between consecutive strokes inside one step. Real gaps (thinking time) are dropped. */
+/**
+ * Pen-lift pause between consecutive strokes inside one step, at 1× speed (it scales with
+ * project speed like the strokes do). Real gaps (thinking time) are dropped.
+ */
 export const STROKE_GAP = 120;
 
 export interface TimedStroke {
@@ -37,7 +40,7 @@ export function getTimeline(project: Project): Timeline {
   project.steps.forEach((step, i) => {
     stepStarts.push(t);
     step.strokes.forEach((stroke, j) => {
-      if (j > 0) t += STROKE_GAP;
+      if (j > 0) t += STROKE_GAP / project.speed;
       const duration = strokeDuration(stroke) / project.speed;
       strokes.push({ stroke, step: i, start: t, duration });
       t += duration;

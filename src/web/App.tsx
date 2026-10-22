@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { PALETTE, getTimeline } from '../core';
 import { Canvas } from './Canvas';
-import { openFile, saveFile, saveFileAs, watchLinkedFile } from './files';
+import { openFile, openFromUrlParam, saveFile, saveFileAs, watchLinkedFile } from './files';
 import { HelpPanel } from './HelpPanel';
 import { MenuBar } from './MenuBar';
 import { Timeline } from './Timeline';
@@ -12,6 +12,7 @@ export function App() {
   usePlayback();
   useShortcuts();
   useEffect(watchLinkedFile, []);
+  useEffect(() => void openFromUrlParam(), []);
 
   return (
     <div className="grid h-full grid-rows-[1fr_auto]">

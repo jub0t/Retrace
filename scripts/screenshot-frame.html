@@ -1,0 +1,103 @@
+<!doctype html>
+<!--
+  Presentation frame for the README screenshot: the live editor in a window on a soft
+  gradient, bleeding off the bottom edge. Render it at 2x with `pnpm screenshot` while
+  `pnpm dev` is running. Override the editor URL with ?src=<url>.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Drawmation screenshot frame</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 1600px;
+        height: 890px;
+        background: transparent;
+        overflow: hidden;
+      }
+      .backdrop {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        border-radius: 28px;
+        background:
+          radial-gradient(900px 520px at 18% -10%, rgba(255, 255, 255, 0.75), transparent 65%),
+          radial-gradient(800px 600px at 100% 110%, rgba(91, 91, 214, 0.35), transparent 70%),
+          linear-gradient(160deg, #e4e3f6 0%, #c7c6ea 50%, #aeadd9 100%);
+      }
+      .window {
+        position: absolute;
+        left: 64px;
+        right: 64px;
+        top: 56px;
+        bottom: -14px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-radius: 14px 14px 0 0;
+        background: #eceef1;
+        box-shadow:
+          0 0 0 1px rgba(20, 20, 60, 0.12),
+          0 2px 6px rgba(20, 20, 60, 0.08),
+          0 30px 80px rgba(30, 30, 90, 0.35);
+      }
+      .titlebar {
+        position: relative;
+        display: flex;
+        flex: none;
+        align-items: center;
+        height: 40px;
+        padding: 0 16px;
+        background: linear-gradient(#fbfbfc, #f2f3f5);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+        font: 500 13px/1 -apple-system, 'Inter', system-ui, sans-serif;
+        color: #5f6670;
+      }
+      .lights {
+        display: flex;
+        gap: 8px;
+      }
+      .lights span {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.15);
+      }
+      .title {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .title b {
+        color: #1b1d21;
+        font-weight: 600;
+      }
+      iframe {
+        flex: 1;
+        width: 100%;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="backdrop">
+      <div class="window">
+        <div class="titlebar">
+          <div class="lights">
+            <span style="background: #ff5f57"></span>
+            <span style="background: #febc2e"></span>
+            <span style="background: #28c840"></span>
+          </div>
+          <div class="title"><b>Drawmation</b> — specimen.drawmation.json</div>
+        </div>
+        <iframe id="editor" title="Drawmation editor"></iframe>
+      </div>
+    </div>
+    <script>
+      const src = new URLSearchParams(location.search).get('src');
+      document.getElementById('editor').src = src || 'http://localhost:5173/?open=/assets/specimen.drawmation.json';
+    </script>
+  </body>
+</html>

@@ -12,7 +12,8 @@
     "mcp": "node dist-mcp/server.js",
     "preview": "vite preview",
     "typecheck": "tsc",
-    "demo": "vite build --ssr scripts/demo.ts --outDir node_modules/.cache/demo --emptyOutDir --logLevel warn && node node_modules/.cache/demo/demo.js"
+    "demo": "vite build --ssr scripts/demo.ts --outDir node_modules/.cache/demo --emptyOutDir --logLevel warn && node node_modules/.cache/demo/demo.js",
+    "screenshot": "sh scripts/screenshot.sh"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

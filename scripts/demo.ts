@@ -141,6 +141,26 @@ function scene(): Project {
   return project;
 }
 
+/** A type specimen: the handwriting alphabet and the stick-figure hairstyles. */
+function specimen(): Project {
+  const project = createProject({ speed: 1.6 });
+  const rand = createRandom(3);
+  const beats: [string, Shape[]][] = [
+    ['the quick brown fox', [{ type: 'text', text: 'THE QUICK BROWN FOX', x: 60, y: 60, height: 90 }]],
+    ['jumps over the lazy dog', [{ type: 'text', text: 'JUMPS OVER THE LAZY DOG', x: 60, y: 200, height: 90 }]],
+    ['numbers & punctuation', [{ type: 'text', text: "0123456789 ?!.,'-:+=/", x: 60, y: 340, height: 90 }]],
+    ['a smaller line', [{ type: 'text', text: 'How does a CPU work?', x: 60, y: 480, height: 50 }]],
+    ...(['none', 'messy', 'spiky', 'long'] as const).map((hair, i): [string, Shape[]] => [
+      `hair: ${hair}`,
+      [{ type: 'stick_figure', x: 300 + i * 420, y: 1020, height: 400, hair, face: 'happy', pose: 'wave' }],
+    ]),
+  ];
+  project.steps = beats.map(([label, shapes]) =>
+    createStep({ label, hold: 300, strokes: shapes.flatMap((shape) => shapeToStrokes(shape, { rand, color: INK })) }),
+  );
+  return project;
+}
+
 /** The mark: a hand-drawn play button over a scribble, drawn by the humanizer itself. */
 function logo(ink: string): Project {
   const project = createProject({ width: 256, height: 256 });
@@ -154,10 +174,12 @@ function logo(ink: string): Project {
   return project;
 }
 
+writeFileSync('assets/specimen.drawmation.json', JSON.stringify(specimen()));
+
 const demo = scene();
 writeFileSync('assets/demo.drawmation.json', JSON.stringify(demo));
 writeFileSync('assets/demo.svg', renderAnimatedSvg(demo, { tail: 0 }));
 writeFileSync('assets/thumbnail.svg', renderSvg(demo));
 writeFileSync('assets/logo-light.svg', renderSvg(logo(INK), { transparent: true }));
 writeFileSync('assets/logo-dark.svg', renderSvg(logo('#f1f3f5'), { transparent: true }));
-console.log('wrote assets/: demo.drawmation.json, demo.svg, thumbnail.svg, logo-light.svg, logo-dark.svg');
+console.log('wrote assets/: specimen.drawmation.json, demo.drawmation.json, demo.svg, thumbnail.svg, logo-light.svg, logo-dark.svg');
