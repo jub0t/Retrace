@@ -4,7 +4,8 @@
 import type { BrushStyle } from './brushes';
 import { measureText, textPenPaths } from './handwriting';
 import { humanizePath, type Vec } from './humanize';
-import { PALETTE, SIZES, uid, type Stroke } from './model';
+import { shareGradientBox } from './paint';
+import { PALETTE, SIZES, uid, type Gradient, type Stroke } from './model';
 
 /**
  * High-level shapes for programmatic drawing (scripts, AI agents). Each shape becomes
@@ -44,6 +45,7 @@ export type Shape = ShapeStyle &
 
 export interface ShapeStyle {
   color?: string;
+  gradient?: Gradient;
   size?: number;
   brush?: BrushStyle;
 }
@@ -60,6 +62,7 @@ export interface DrawContext {
   wobble?: number;
   speed?: number;
   color?: string;
+  gradient?: Gradient;
   size?: number;
   brush?: BrushStyle;
 }
@@ -72,15 +75,18 @@ export function shapeToStrokes(shape: Shape, ctx: DrawContext): Stroke[] {
   const textNib = shape.type === 'text' ? Math.max(3, (shape.height ?? 60) / 10) : undefined;
   const size = shape.size ?? textNib ?? ctx.size ?? SIZES.medium;
   const brush = shape.brush ?? ctx.brush;
+  const gradient = shape.gradient ?? (shape.color ? undefined : ctx.gradient);
   const wobble = ctx.wobble ?? 1;
-  return penPaths(shape, ctx.rand, wobble).map((segments) => ({
+  const strokes = penPaths(shape, ctx.rand, wobble).map((segments) => ({
     id: uid(),
     color,
     size,
     ...(brush && brush !== 'marker' ? { brush } : {}),
+    ...(gradient ? { gradient, color: gradient.stops[0]?.color ?? color } : {}),
     simulatePressure: true,
     points: humanizePath(segments, { rand: ctx.rand, wobble, speed: ctx.speed }),
   }));
+  return gradient ? shareGradientBox(strokes) : strokes;
 }
 
 function penPaths(shape: Shape, rand: () => number, wobble: number): PenPath[] {

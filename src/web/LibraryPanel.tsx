@@ -2,7 +2,7 @@
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { ASSET_EXTENSION, brushOf, strokeOutlinePath, type Asset } from '../core';
+import { ASSET_EXTENSION, brushOf, strokeOutlinePath, svgPaint, type Asset } from '../core';
 import { ASSET_DRAG_TYPE } from './Canvas';
 import { download } from './files';
 import { CloseIcon, DownloadIcon, TrashIcon } from './icons';
@@ -172,9 +172,14 @@ function AssetCard({ asset }: { asset: Asset }) {
 /** The object's strokes as SVG, drawn with the same outline engine as the canvas. */
 const AssetThumb = memo(function AssetThumb({ asset }: { asset: Asset }) {
   const paths = useMemo(
-    () => asset.strokes.map((s) => ({ d: strokeOutlinePath(s), fill: s.color, opacity: brushOf(s.brush).opacity })),
-    [asset.strokes],
+    () =>
+      asset.strokes.map((s, i) => {
+        const paint = svgPaint(s, `${asset.id}-${i}`);
+        return { d: strokeOutlinePath(s), fill: paint.fill, def: paint.def, opacity: brushOf(s.brush).opacity };
+      }),
+    [asset.id, asset.strokes],
   );
+  const defs = paths.map((p) => p.def).join('');
   const pad = Math.max(asset.width, asset.height) * 0.08;
   return (
     <svg
@@ -183,6 +188,7 @@ const AssetThumb = memo(function AssetThumb({ asset }: { asset: Asset }) {
       preserveAspectRatio="xMidYMid meet"
       aria-hidden
     >
+      {defs && <defs dangerouslySetInnerHTML={{ __html: defs }} />}
       {paths.map((p, i) => (
         <path key={i} d={p.d} fill={p.fill} fillOpacity={p.opacity} />
       ))}

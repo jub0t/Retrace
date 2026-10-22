@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
-import { brushOf, getTimeline, pointsAt, strokeDuration, strokeOutlinePath, visibleStrokes, type Project, type Stroke } from '../core';
+import { brushOf, gradientBox, gradientGeometry, sortedStops, getTimeline, pointsAt, strokeDuration, strokeOutlinePath, visibleStrokes, type Project, type Stroke } from '../core';
 
 // Finished strokes are immutable, so their outline can be built once.
 const pathCache = new WeakMap<Stroke, Path2D>();
@@ -29,9 +29,23 @@ function fill(ctx: CanvasRenderingContext2D, stroke: Stroke, path: Path2D) {
   const { opacity } = brushOf(stroke.brush);
   const alpha = ctx.globalAlpha;
   ctx.globalAlpha = alpha * opacity; // compose with onion-skin dimming
-  ctx.fillStyle = stroke.color;
+  ctx.fillStyle = paintFor(ctx, stroke);
   ctx.fill(path);
   ctx.globalAlpha = alpha;
+}
+
+/**
+ * Solid color, or a gradient laid over the whole finished stroke (even mid-playback, so
+ * the colors don't slide around while the stroke is still being drawn).
+ */
+function paintFor(ctx: CanvasRenderingContext2D, stroke: Stroke): string | CanvasGradient {
+  if (!stroke.gradient) return stroke.color;
+  const b = gradientBox(stroke);
+  if (!b) return stroke.color;
+  const geo = gradientGeometry(stroke.gradient, b);
+  const g = geo.type === 'linear' ? ctx.createLinearGradient(geo.x1, geo.y1, geo.x2, geo.y2) : ctx.createRadialGradient(geo.cx, geo.cy, 0, geo.cx, geo.cy, geo.r);
+  for (const s of sortedStops(stroke.gradient)) g.addColorStop(s.offset, s.color);
+  return g;
 }
 
 export function drawBackground(ctx: CanvasRenderingContext2D, project: Project, transparent = false): void {

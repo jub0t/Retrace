@@ -3,6 +3,7 @@
 
 import { brushOf } from './brushes';
 import { strokeOutlinePath } from './geometry';
+import { svgPaint } from './paint';
 import type { Project, Stroke } from './model';
 import { getTimeline } from './timeline';
 
@@ -15,10 +16,13 @@ export interface SvgOptions {
 /** The finished drawing (up to a step) as a static SVG. */
 export function renderSvg(project: Project, opts: SvgOptions = {}): string {
   const upto = opts.uptoStep ?? project.steps.length - 1;
-  const body = project.steps
-    .slice(0, upto + 1)
-    .flatMap((step) => step.strokes.map((s) => `<path d="${strokeOutlinePath(s)}" fill="${s.color}"${opacityAttr(s)}/>`))
-    .join('\n');
+  const defs: string[] = [];
+  const paths = project.steps.slice(0, upto + 1).flatMap((step) => step.strokes).map((s, i) => {
+    const paint = svgPaint(s, `p${i}`);
+    if (paint.def) defs.push(paint.def);
+    return `<path d="${strokeOutlinePath(s)}" fill="${paint.fill}"${opacityAttr(s)}/>`;
+  });
+  const body = (defs.length ? `<defs>\n${defs.join('\n')}\n</defs>\n` : '') + paths.join('\n');
   return wrap(project, body, opts.transparent);
 }
 
@@ -63,7 +67,9 @@ export function renderAnimatedSvg(project: Project, opts: AnimatedSvgOptions = {
         `<animate attributeName="stroke-dashoffset" dur="${fmt(total / 1000)}s" repeatCount="${repeat}" fill="freeze" keyTimes="${keyTimes}" values="${values}"/>` +
         `</polyline></mask>`,
     );
-    paths.push(`<path d="${strokeOutlinePath(stroke)}" fill="${stroke.color}"${opacityAttr(stroke)} mask="url(#m${i})"/>`);
+    const paint = svgPaint(stroke, `p${i}`);
+    if (paint.def) defs.push(paint.def);
+    paths.push(`<path d="${strokeOutlinePath(stroke)}" fill="${paint.fill}"${opacityAttr(stroke)} mask="url(#m${i})"/>`);
   });
 
   return wrap(project, `<defs>\n${defs.join('\n')}\n</defs>\n${paths.join('\n')}`, opts.transparent);

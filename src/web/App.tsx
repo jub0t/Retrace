@@ -151,7 +151,7 @@ function useShortcuts() {
       else if (key === ']') actions.moveStep(1);
       else if (key === '-' || key === '_') actions.setSize(s.size - (s.size > 10 ? 2 : 1));
       else if (key === '=' || key === '+') actions.setSize(s.size + (s.size >= 10 ? 2 : 1));
-      else if (/^[1-9]$/.test(key) && PALETTE[Number(key) - 1]) setState({ color: PALETTE[Number(key) - 1], tool: 'pen' });
+      else if (/^[1-9]$/.test(key) && PALETTE[Number(key) - 1]) actions.setColor(PALETTE[Number(key) - 1]);
       else return;
       e.preventDefault();
     };

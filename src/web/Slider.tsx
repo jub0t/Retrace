@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { cx } from './ui';
 
 export interface SliderMark {
@@ -34,6 +34,8 @@ export interface SliderProps {
   defaultValue?: number;
   variant?: 'default' | 'scrubber';
   className?: string;
+  /** Custom track background (e.g. a hue rainbow); hides the filled portion. */
+  trackStyle?: CSSProperties;
 }
 
 const DETENT_RANGE = 0.025; // fraction of the track
@@ -155,11 +157,17 @@ export function Slider(props: SliderProps) {
       onKeyDown={onKeyDown}
       onDoubleClick={onDoubleClick}
     >
-      <div ref={trackRef} className={cx('relative w-full rounded-full', scrubber ? 'h-1.5 bg-[#eef0f3]' : 'h-1 bg-line')}>
-        <div
-          className={cx('absolute inset-y-0 left-0 rounded-full', scrubber ? 'bg-accent/40' : 'bg-accent')}
-          style={{ width: `${pos * 100}%` }}
-        />
+      <div
+        ref={trackRef}
+        className={cx('relative w-full rounded-full', props.trackStyle ? 'h-3 ring-1 ring-black/10 ring-inset' : scrubber ? 'h-1.5 bg-[#eef0f3]' : 'h-1 bg-line')}
+        style={props.trackStyle}
+      >
+        {!props.trackStyle && (
+          <div
+            className={cx('absolute inset-y-0 left-0 rounded-full', scrubber ? 'bg-accent/40' : 'bg-accent')}
+            style={{ width: `${pos * 100}%` }}
+          />
+        )}
         {marks.map((m) => (
           <span
             key={m.value}

@@ -33,12 +33,19 @@ export const ASSET_EXTENSION = '.retrace-asset.json';
 export function transformStrokes(strokes: Stroke[], map: (x: number, y: number) => [number, number], sizeScale = 1): Stroke[] {
   return strokes.map((s) => ({
     ...s,
+    ...(s.gradient?.box && { gradient: { ...s.gradient, box: mapBox(s.gradient.box, map) } }),
     size: round(s.size * sizeScale),
     points: s.points.map(([x, y, p, t]): Point => {
       const [nx, ny] = map(x, y);
       return [round(nx), round(ny), p, t];
     }),
   }));
+}
+
+function mapBox(box: { x: number; y: number; width: number; height: number }, map: (x: number, y: number) => [number, number]) {
+  const [x1, y1] = map(box.x, box.y);
+  const [x2, y2] = map(box.x + box.width, box.y + box.height);
+  return { x: round(Math.min(x1, x2)), y: round(Math.min(y1, y2)), width: round(Math.abs(x2 - x1)), height: round(Math.abs(y2 - y1)) };
 }
 
 /** Copies with fresh ids, so pasted or placed strokes never collide with existing ones. */

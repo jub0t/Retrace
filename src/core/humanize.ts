@@ -29,6 +29,7 @@ const SAMPLE_MS = 8; // ~120 Hz, like a real pointer
 const RESAMPLE_PX = 2;
 const CORNER_DWELL_MS = 35;
 const MOMENTUM = 0.3;
+const DEFAULT_SPEED = 1.6;
 
 /**
  * Turns an ideal pen path into points that look recorded from a human hand.
@@ -40,7 +41,7 @@ const MOMENTUM = 0.3;
  * the stroke still starts and lands where intended.
  */
 export function humanizePath(segments: Vec[][], opts: HumanizeOptions): Point[] {
-  const { rand, wobble = 1, speed = 1.6 } = opts;
+  const { rand, wobble = 1, speed = DEFAULT_SPEED } = opts;
 
   // 1. Dense polyline + where each segment ends along it.
   const dense: Vec[] = [];
@@ -84,12 +85,15 @@ export function humanizePath(segments: Vec[][], opts: HumanizeOptions): Point[] 
 
   // 3. Timing: per-segment minimum-jerk motion, slightly randomized pace.
   const pace = speed * (0.85 + rand() * 0.3);
+  // Ramp-up and corner pauses shrink as the hand speeds up, so quick coloring-in
+  // passes (many short segments) stay quick. At the default speed this factor is 1.
+  const tempo = DEFAULT_SPEED / speed;
   const points: Point[] = [];
   let t0 = 0;
   let s0 = 0;
   segEnds.forEach((s1, k) => {
     const len = s1 - s0;
-    const dur = 60 + len / pace + 18 * Math.sqrt(len);
+    const dur = (60 + 18 * Math.sqrt(len)) * tempo + len / pace;
     const steps = Math.max(2, Math.ceil(dur / SAMPLE_MS));
     for (let i = k === 0 ? 0 : 1; i <= steps; i++) {
       const tau = i / steps;
@@ -99,7 +103,7 @@ export function humanizePath(segments: Vec[][], opts: HumanizeOptions): Point[] 
       const [x, y] = pointAtLength(wobbled, cum, s);
       points.push([round2(x), round2(y), 0.5, Math.round(t0 + tau * dur)]);
     }
-    t0 += dur + (k < segEnds.length - 1 ? CORNER_DWELL_MS : 0);
+    t0 += dur + (k < segEnds.length - 1 ? CORNER_DWELL_MS * tempo : 0);
     s0 = s1;
   });
   return dedupeTimes(points);

@@ -279,7 +279,7 @@ export function Canvas() {
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 || !layout) return;
-    const { tool, color, size, brush } = getState();
+    const { tool, color, gradient, size, brush } = getState();
     actions.exitPreview();
     e.currentTarget.setPointerCapture(e.pointerId);
     if (tool === 'select') {
@@ -291,7 +291,7 @@ export function Canvas() {
     if (tool === 'pen') {
       draft.current = {
         start: e.timeStamp,
-        stroke: { id: uid(), color, size, ...(brush !== 'marker' && { brush }), simulatePressure: e.pointerType !== 'pen', points: [] },
+        stroke: { id: uid(), color, ...(gradient && { gradient }), size, ...(brush !== 'marker' && { brush }), simulatePressure: e.pointerType !== 'pen', points: [] },
       };
       draft.current.stroke.points.push([...toProject(e), e.pointerType === 'pen' ? e.pressure || 0.5 : 0.5, 0]);
     } else {

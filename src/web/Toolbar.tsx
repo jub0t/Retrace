@@ -4,6 +4,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { BRUSHES, BRUSH_STYLES, PALETTE, createRandom, shapeToStrokes, strokeOutlinePath, type BrushStyle } from '../core';
 import { EraserIcon, LibraryIcon, OnionIcon, PenIcon, RedoIcon, SelectIcon, UndoIcon } from './icons';
+import { PaintButton } from './ColorPicker';
 import { Slider } from './Slider';
 import { actions, setState, useEditor } from './store';
 import { Divider, IconButton, Island, Popover, cx } from './ui';
@@ -15,6 +16,7 @@ export const MAX_SIZE = 48;
 export function Toolbar() {
   const tool = useEditor((s) => s.tool);
   const color = useEditor((s) => s.color);
+  const gradient = useEditor((s) => s.gradient);
   const onion = useEditor((s) => s.onion);
   const libraryOpen = useEditor((s) => s.libraryOpen);
 
@@ -35,15 +37,16 @@ export function Toolbar() {
           key={c}
           className={cx(
             'mx-0.5 size-[22px] shrink-0 rounded-full border-2 border-white transition duration-100 ease-snappy hover:scale-110',
-            color === c ? 'ring-2 ring-accent' : 'ring-1 ring-black/10',
+            color === c && !gradient ? 'ring-2 ring-accent' : 'ring-1 ring-black/10',
           )}
           style={{ background: c }}
-          aria-pressed={color === c}
+          aria-pressed={color === c && !gradient}
           aria-label={`Color ${i + 1}`}
           title={`Color (${i + 1})`}
-          onClick={() => setState({ color: c, tool: 'pen' })}
+          onClick={() => actions.setColor(c)}
         />
       ))}
+      <PaintButton />
       <Divider />
       <BrushPicker />
       <Divider />

@@ -11,10 +11,35 @@ import type { BrushStyle } from './brushes';
 /** x, y in project pixels; pressure 0..1; t = ms since the stroke started. */
 export type Point = [x: number, y: number, pressure: number, t: number];
 
+export interface GradientStop {
+  /** 0..1 along the gradient. */
+  offset: number;
+  color: string;
+}
+
+/**
+ * A gradient fill for a stroke, laid over the stroke's own bounding box so it moves and
+ * scales with the stroke. Linear: angle in degrees (0 = left to right, 90 = top to bottom).
+ * Radial: from the center out.
+ */
+export interface Gradient {
+  type: 'linear' | 'radial';
+  angle: number;
+  stops: GradientStop[];
+  /**
+   * The area the gradient spans, in project pixels. Strokes that belong together (a word,
+   * a shape, a recolored selection) share one box so the colors flow across all of them.
+   * Defaults to the stroke's own bounds.
+   */
+  box?: { x: number; y: number; width: number; height: number };
+}
+
 export interface Stroke {
   id: string;
   points: Point[];
+  /** Solid color, and the fallback (first stop) when a gradient is set. */
   color: string;
+  gradient?: Gradient;
   /** Nib diameter in project pixels. */
   size: number;
   /** Defaults to 'marker'. */

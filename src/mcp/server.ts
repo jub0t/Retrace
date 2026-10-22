@@ -48,8 +48,17 @@ const brushArg = z
   .enum(BRUSH_STYLES)
   .optional()
   .describe('marker (default, even felt-tip), pen (tapered ink), pencil (thin, light), brush (calligraphic), highlighter (wide, translucent)');
+const gradientArg = z
+  .object({
+    type: z.enum(['linear', 'radial']),
+    angle: z.number().optional().describe('Linear only, degrees: 0 = left to right, 90 = top to bottom'),
+    stops: z.array(z.object({ offset: z.number().min(0).max(1), color: z.string() })).min(2),
+  })
+  .optional()
+  .describe('Gradient across each stroke instead of a solid color');
 const style = {
   color: z.string().optional().describe('CSS color; defaults to the draw call color'),
+  gradient: gradientArg,
   size: z.number().positive().optional().describe('Nib size in px'),
   brush: brushArg,
 };
@@ -138,23 +147,23 @@ server.registerTool(
       color: z.string().optional().describe(`Default color for these shapes (default ${PALETTE[0]})`),
       size: z.number().positive().optional().describe(`Default nib size (default ${SIZES.medium})`),
       brush: brushArg,
+      gradient: gradientArg,
       wobble: z.number().min(0).max(3).optional().describe('0 = ruler-straight, 1 = natural (default), 2+ = scrawly'),
       speed: z.number().positive().optional().describe('Drawing speed in px/ms (default ~1.6)'),
       seed: z.number().int().optional().describe('Random seed for reproducible wobble'),
     },
   },
-  tool(async ({ file, shapes, step, new_step, label, hold, color, size, brush, wobble, speed, seed }) => {
+  tool(async ({ file, shapes, step, new_step, label, hold, color, size, brush, gradient, wobble, speed, seed }) => {
     const path = resolve(file);
     const project = await load(path);
     let index = step ?? project.steps.length - 1;
     if (new_step) {
-      project.steps.push(createStep(stripUndefined({ label, hold })));
-      index = project.steps.length - 1;
+      index = appendStep(project, { label, hold });
     } else if (!project.steps[index]) {
       throw new Error(`No step ${index}; the project has steps 0..${project.steps.length - 1}`);
     }
     const rand = createRandom(seed ?? Date.now());
-    const strokes = (shapes as Shape[]).flatMap((shape) => shapeToStrokes(shape, { rand, color, size, brush, wobble, speed }));
+    const strokes = (shapes as Shape[]).flatMap((shape) => shapeToStrokes(shape, { rand, color, size, brush, wobble, speed, gradient: gradient && { ...gradient, angle: gradient.angle ?? 0 } }));
     project.steps[index].strokes.push(...strokes);
     await save(path, project);
     const b = strokesBounds(strokes);
@@ -350,10 +359,7 @@ server.registerTool(
     const project = await load(path);
     const obj = parseAsset(JSON.parse(await readFile(resolve(asset), 'utf8')));
     let index = step ?? project.steps.length - 1;
-    if (new_step) {
-      project.steps.push(createStep(stripUndefined({ label, hold })));
-      index = project.steps.length - 1;
-    }
+    if (new_step) index = appendStep(project, { label, hold });
     const strokes = placeAsset(obj, x, y, scale);
     getStep(project, index).strokes.push(...strokes);
     await save(path, project);
@@ -411,6 +417,20 @@ async function save(path: string, project: Project): Promise<void> {
   const tmp = `${path}.${process.pid}.tmp`;
   await writeFile(tmp, JSON.stringify(project));
   await rename(tmp, path);
+}
+
+/**
+ * Start a new step at the end. A trailing empty, unlabeled step (like the one every new
+ * project starts with) is reused, so agents don't leave a blank step at the front.
+ */
+function appendStep(project: Project, init: { label?: string; hold?: number }): number {
+  const last = project.steps[project.steps.length - 1];
+  if (last && !last.strokes.length && !last.label) {
+    Object.assign(last, stripUndefined(init));
+    return project.steps.length - 1;
+  }
+  project.steps.push(createStep(stripUndefined(init)));
+  return project.steps.length - 1;
 }
 
 function getStep(project: Project, index: number) {

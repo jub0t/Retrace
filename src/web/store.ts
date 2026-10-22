@@ -17,11 +17,13 @@ import {
   placeAsset,
   stepEndTime,
   strokeClipboard,
+  strokesBounds,
   transformStrokes,
   uid,
   withNewIds,
   type Asset,
   type BrushStyle,
+  type Gradient,
   type Project,
   type Step,
   type Stroke,
@@ -35,6 +37,10 @@ export interface EditorState {
   current: number;
   tool: Tool;
   color: string;
+  /** When set, new strokes use this gradient instead of the solid color. */
+  gradient: Gradient | null;
+  /** Recently picked solid colors, newest first. */
+  recentColors: string[];
   brush: BrushStyle;
   /** Size of the active brush. */
   size: number;
@@ -64,6 +70,7 @@ export interface EditorState {
 
 const STORAGE_KEY = 'retrace:project';
 const LIBRARY_KEY = 'retrace:library';
+const RECENT_COLORS_KEY = 'retrace:recent-colors';
 const HISTORY_LIMIT = 200;
 const NO_SELECTION: ReadonlySet<string> = new Set();
 
@@ -73,6 +80,8 @@ let state: EditorState = {
   current: initialProject.steps.length - 1,
   tool: 'pen',
   color: PALETTE[0],
+  gradient: null,
+  recentColors: loadRecentColors(),
   brush: 'marker',
   size: BRUSHES.marker.defaultSize,
   brushSizes: Object.fromEntries(BRUSH_STYLES.map((b) => [b, BRUSHES[b].defaultSize])) as Record<BrushStyle, number>,
@@ -157,6 +166,21 @@ const currentStep = () => state.project.steps[state.current];
 const stopPreview = { playing: false, playhead: null } as const;
 
 export const actions = {
+  /**
+   * Pick a solid color for new strokes; with strokes selected, recolor them too.
+   * Pass `final: false` while dragging in the picker so the whole drag is one undo step.
+   */
+  setColor(color: string, final = true) {
+    setState({ color, gradient: null, tool: state.tool === 'eraser' ? 'pen' : state.tool });
+    recolorSelection(color, null, final);
+    if (final) rememberColor(color);
+  },
+
+  setGradient(gradient: Gradient, final = true) {
+    setState({ gradient, color: gradient.stops[0]?.color ?? state.color, tool: state.tool === 'eraser' ? 'pen' : state.tool });
+    recolorSelection(gradient.stops[0]?.color ?? state.color, gradient, final);
+  },
+
   setBrush(brush: BrushStyle) {
     setState({ brush, size: state.brushSizes[brush], tool: 'pen' });
   },
@@ -402,6 +426,45 @@ function scheduleAutosave() {
       // Storage full or blocked (private mode): autosave is a convenience, not a guarantee.
     }
   }, 400);
+}
+
+function recolorSelection(color: string, gradient: Gradient | null, final: boolean) {
+  if (!state.selection.size || state.playhead !== null) return;
+  const sel = state.selection;
+  // One gradient across the whole selection, not one per stroke.
+  const box = gradient ? strokesBounds(currentStep().strokes.filter((st) => sel.has(st.id))) : null;
+  if (gradient && box) gradient = { ...gradient, box };
+  apply(
+    updateStep(state.current, (s) => ({
+      ...s,
+      strokes: s.strokes.map((st) => {
+        if (!sel.has(st.id)) return st;
+        const { gradient: _old, ...rest } = st;
+        return gradient ? { ...rest, color, gradient } : { ...rest, color };
+      }),
+    })),
+    final,
+  );
+}
+
+function rememberColor(color: string) {
+  const recent = [color, ...state.recentColors.filter((c) => c.toLowerCase() !== color.toLowerCase())].slice(0, 10);
+  setState({ recentColors: recent });
+  try {
+    localStorage.setItem(RECENT_COLORS_KEY, JSON.stringify(recent));
+  } catch {
+    // Recent colors are a convenience.
+  }
+}
+
+function loadRecentColors(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_COLORS_KEY) ?? '[]');
+    if (Array.isArray(raw)) return raw.filter((c): c is string => typeof c === 'string').slice(0, 10);
+  } catch {
+    // Ignore unreadable storage.
+  }
+  return [];
 }
 
 function setLibrary(library: Asset[]) {

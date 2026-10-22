@@ -37,7 +37,7 @@ That is the actual animated SVG export: no video and no script. It's one self-pl
 
 - ✍️ **Real strokes.** Path, pressure and timing are recorded, then replayed at the speed of the hand.
 - 🪜 **Steps.** Each step adds to the drawing, with its own hold time and label.
-- 🖌️ **Brushes, lettering, stick figures.** Five brushes, a single-stroke handwriting font, and posable stick figures.
+- 🖌️ **Brushes, color, lettering.** Five brushes, solid and gradient color, a single-stroke handwriting font, and posable stick figures.
 - ♻️ **Reusable objects.** Select strokes, save them to your library, and drop them into any drawing.
 - 🎞️ **Timeline.** Frame-accurate scrubbing, loop, onion skin and step thumbnails.
 - 🤖 **MCP built in.** Agents draw, preview their own work and export.
