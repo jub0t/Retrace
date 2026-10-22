@@ -21,7 +21,7 @@
 
 ## About
 
-Retrace is a free, open-source tool for hand-drawn explainer animations in the style of [cpu.land](https://cpu.land/). Draw a stroke, add a step, draw the next. Playback redraws every stroke exactly the way your hand drew it.
+Retrace is a free, open-source tool for hand-drawn, stick-figure explainer animations. Draw a stroke, add a step, draw the next. Playback redraws every stroke exactly the way your hand drew it.
 
 AI agents can draw too. A built-in MCP server and a humanizer give every generated line a natural wobble, overshoot and pen speed. Everything in the screenshot above was drawn in code ([scripts/demo.ts](scripts/demo.ts)).
 

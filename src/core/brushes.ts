@@ -19,7 +19,7 @@ export interface Brush {
 export const BRUSHES: Record<BrushStyle, Brush> = {
   marker: {
     label: 'Marker',
-    description: 'Even, slightly wobbly felt-tip. The cpu.land look.',
+    description: 'Even, slightly wobbly felt-tip. The classic explainer look.',
     outline: { thinning: 0.3, smoothing: 0.6, streamline: 0.45 },
     opacity: 1,
     defaultSize: 7,

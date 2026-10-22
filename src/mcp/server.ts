@@ -29,7 +29,7 @@ import {
   type Shape,
 } from '../core';
 
-const INSTRUCTIONS = `Retrace makes hand-drawn explainer animations (think cpu.land: scrawled black marker on off-white, gray annotations, one accent color).
+const INSTRUCTIONS = `Retrace makes hand-drawn explainer animations: scrawled black marker on off-white, gray annotations, one accent color.
 
 A project is a JSON file of cumulative steps. Each step adds strokes on top of the previous ones; playback redraws every stroke at human hand speed, then holds.
 Canvas: default 1920x1080, origin top-left, units are pixels. Stick figures are ~260px tall by default; leave 80px margins.
