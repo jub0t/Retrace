@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { distanceToStroke, strokesBounds, uid, type Stroke } from '../core';
 import { drawBackground, drawFrame, drawLiveStroke, drawStroke } from './render';

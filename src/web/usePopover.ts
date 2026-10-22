@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { useEffect, useRef } from 'react';
 
 /** Close a popover on outside pointer-down or Escape. Returns a ref for the popover's root. */

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { strokeDuration, type Project, type Stroke } from './model';
 
 /** Frame rate for scrubbing and video export. */

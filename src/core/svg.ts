@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { brushOf } from './brushes';
 import { strokeOutlinePath } from './geometry';
 import type { Project, Stroke } from './model';

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import type { ComponentProps } from 'react';
 
 /** Join class names, skipping falsy values. */

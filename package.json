@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "description": "Draw step by step, play it back like a human drew it.",
+  "author": "Jareer Abdullah",
+  "homepage": "https://github.com/jub0t/Retrace",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jub0t/Retrace.git"
+  },
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {

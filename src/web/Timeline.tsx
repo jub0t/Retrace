@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { memo, useEffect, useRef, useState } from 'react';
 import { FRAME_MS, getTimeline, stepAt, stepEndTime, type Project } from '../core';
 import { FrameBackIcon, FrameForwardIcon, LeftIcon, LoopIcon, PauseIcon, PlayIcon, PlayStepIcon, PlusIcon, RightIcon, TrashIcon } from './icons';

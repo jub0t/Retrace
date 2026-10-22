@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { getStroke } from 'perfect-freehand';
 import { brushOf } from './brushes';
 import type { Point, Stroke } from './model';

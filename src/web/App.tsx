@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { useEffect } from 'react';
 import { PALETTE, getTimeline } from '../core';
 import { Canvas } from './Canvas';

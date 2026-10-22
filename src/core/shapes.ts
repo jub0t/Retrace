@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import type { BrushStyle } from './brushes';
 import { measureText, textPenPaths } from './handwriting';
 import { humanizePath, type Vec } from './humanize';

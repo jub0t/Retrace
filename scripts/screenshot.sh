@@ -1,4 +1,7 @@
 #!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Jareer Abdullah & Retrace Contributors
+#
 # Renders the README screenshot (assets/editor.png) at 2x with headless Chrome.
 # Needs `pnpm dev` running on http://localhost:5173. Set CHROME to override the binary.
 set -e

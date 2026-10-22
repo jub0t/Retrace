@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { useCallback, useMemo, useState } from 'react';
 import { BRUSHES, BRUSH_STYLES, PALETTE, createRandom, shapeToStrokes, strokeOutlinePath, type BrushStyle } from '../core';
 import { EraserIcon, OnionIcon, PenIcon, RedoIcon, UndoIcon } from './icons';

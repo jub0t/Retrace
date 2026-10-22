@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { useCallback } from 'react';
 import { setState, useEditor } from './store';
 import { Island, Kbd, TextButton } from './ui';

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { FPS, getTimeline, type Project } from '../core';
 import { drawFrame } from './render';
 

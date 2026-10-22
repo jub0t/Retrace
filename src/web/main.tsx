@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/inter';

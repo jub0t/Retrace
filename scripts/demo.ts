@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 /**
  * Builds the README demo, a YouTube-explainer-style thumbnail, with the core API (the
  * same one the MCP server uses) and writes it to assets/. Run with `pnpm demo`.

@@ -182,4 +182,4 @@ A project is plain JSON: `steps[]`, each holding `strokes[]`, each storing point
 
 ## License
 
-[Apache-2.0](LICENSE)
+Copyright 2026 Jareer Abdullah & Retrace Contributors. Licensed under [Apache-2.0](LICENSE); see [NOTICE](NOTICE) for the attribution that redistributions keep.

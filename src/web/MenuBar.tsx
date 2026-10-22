@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Jareer Abdullah & Retrace Contributors
+
 import { useCallback, useState } from 'react';
 import { exportVideo } from './exportVideo';
 import { download, exportAnimatedSvg, openFile, reloadFromDisk, saveFile, unlinkFile } from './files';
