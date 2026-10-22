@@ -3,7 +3,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { BRUSHES, BRUSH_STYLES, PALETTE, createRandom, shapeToStrokes, strokeOutlinePath, type BrushStyle } from '../core';
-import { EraserIcon, OnionIcon, PenIcon, RedoIcon, UndoIcon } from './icons';
+import { EraserIcon, LibraryIcon, OnionIcon, PenIcon, RedoIcon, SelectIcon, UndoIcon } from './icons';
 import { Slider } from './Slider';
 import { actions, setState, useEditor } from './store';
 import { Divider, IconButton, Island, Popover, cx } from './ui';
@@ -16,9 +16,13 @@ export function Toolbar() {
   const tool = useEditor((s) => s.tool);
   const color = useEditor((s) => s.color);
   const onion = useEditor((s) => s.onion);
+  const libraryOpen = useEditor((s) => s.libraryOpen);
 
   return (
     <Island className="absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-0.5 p-1 max-[1100px]:top-[60px]">
+      <IconButton active={tool === 'select'} aria-pressed={tool === 'select'} title="Select (V): click, Shift-click or drag a box; drag to move" onClick={() => setState({ tool: 'select' })}>
+        <SelectIcon />
+      </IconButton>
       <IconButton active={tool === 'pen'} aria-pressed={tool === 'pen'} title="Pen (P)" onClick={() => setState({ tool: 'pen' })}>
         <PenIcon />
       </IconButton>
@@ -51,6 +55,10 @@ export function Toolbar() {
       </IconButton>
       <IconButton active={onion} aria-pressed={onion} title="Onion skin (O): dim earlier steps, ghost the next one" onClick={() => setState({ onion: !onion })}>
         <OnionIcon />
+      </IconButton>
+      <Divider />
+      <IconButton active={libraryOpen} aria-pressed={libraryOpen} title="Library of saved objects (I)" onClick={() => setState({ libraryOpen: !libraryOpen })}>
+        <LibraryIcon />
       </IconButton>
     </Island>
   );

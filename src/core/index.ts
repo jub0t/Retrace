@@ -9,3 +9,4 @@ export * from './humanize';
 export * from './shapes';
 export * from './handwriting';
 export * from './svg';
+export * from './assets';

@@ -16,8 +16,11 @@ import {
   PALETTE,
   POSES,
   SIZES,
+  createAsset,
   createProject,
   createRandom,
+  parseAsset,
+  placeAsset,
   createStep,
   getTimeline,
   parseProject,
@@ -36,6 +39,7 @@ Canvas: default 1920x1080, origin top-left, units are pixels. Stick figures are 
 
 Workflow: create_project → for each beat of the explanation: draw (with new_step and a label) → render_preview to check the result → fix with remove_last_strokes if needed → export_svg.
 Text: use the text shape for titles and labels (hand-lettered capitals); keep thumbnail titles to a few words at height 90-150.
+Recurring characters/props: draw once, save_asset, then place_asset in later scenes so they stay consistent.
 Style tips: one idea per step; draw in the order a person would (outline before details, arrow after the things it connects); use ${PALETTE[0]} for main ink, ${PALETTE[1]} for annotations/arrows, and at most one accent (${PALETTE[2]} or ${PALETTE[3]}); marker brush for most things, highlighter (size ~24) to emphasize; vary seed so repeated shapes don't look identical.
 The user can open the same file in the Retrace web editor (Open → pick the file) to watch changes live.`;
 
@@ -295,6 +299,66 @@ server.registerTool(
       return errorResult(err);
     }
   },
+);
+
+server.registerTool(
+  'save_asset',
+  {
+    title: 'Save asset',
+    description:
+      'Save strokes from a step as a reusable object (.retrace-asset.json), e.g. a recurring character. ' +
+      'The same file works in the editor library (Import). Strokes keep their recorded motion.',
+    inputSchema: {
+      file: fileArg,
+      out: z.string().describe('Output path, e.g. ./assets/hero.retrace-asset.json'),
+      name: z.string().describe('Human-readable name'),
+      step: z.number().int().min(0).optional().describe('Step to take strokes from; default is the last step'),
+      from_stroke: z.number().int().min(0).optional().describe('First stroke index in the step (default 0)'),
+      to_stroke: z.number().int().min(0).optional().describe('Last stroke index, inclusive (default: the last stroke)'),
+    },
+  },
+  tool(async ({ file, out, name, step, from_stroke = 0, to_stroke }) => {
+    const project = await load(resolve(file));
+    const index = step ?? project.steps.length - 1;
+    const strokes = getStep(project, index).strokes.slice(from_stroke, to_stroke === undefined ? undefined : to_stroke + 1);
+    const asset = createAsset(name, strokes);
+    const outPath = resolve(out);
+    await writeFile(outPath, JSON.stringify(asset));
+    return `Saved "${asset.name}" (${strokes.length} strokes, ${asset.width}x${asset.height}) to ${outPath}.`;
+  }),
+);
+
+server.registerTool(
+  'place_asset',
+  {
+    title: 'Place asset',
+    description: 'Draw a saved object (.retrace-asset.json) into a step, centered at (x, y). It replays with its original hand motion.',
+    inputSchema: {
+      file: fileArg,
+      asset: z.string().describe('Path to a .retrace-asset.json file'),
+      x: z.number().describe('Center x'),
+      y: z.number().describe('Center y'),
+      scale: z.number().positive().optional().describe('Default 1'),
+      step: z.number().int().min(0).optional().describe('Step to draw into; default is the last step'),
+      new_step: z.boolean().optional().describe('Append a new step and draw into it'),
+      label: z.string().optional().describe('Label for the new step'),
+      hold: z.number().min(0).optional().describe('Pause after the new step, ms'),
+    },
+  },
+  tool(async ({ file, asset, x, y, scale = 1, step, new_step, label, hold }) => {
+    const path = resolve(file);
+    const project = await load(path);
+    const obj = parseAsset(JSON.parse(await readFile(resolve(asset), 'utf8')));
+    let index = step ?? project.steps.length - 1;
+    if (new_step) {
+      project.steps.push(createStep(stripUndefined({ label, hold })));
+      index = project.steps.length - 1;
+    }
+    const strokes = placeAsset(obj, x, y, scale);
+    getStep(project, index).strokes.push(...strokes);
+    await save(path, project);
+    return `Placed "${obj.name}" (${strokes.length} strokes) at ${x},${y} scale ${scale} in step ${index}.`;
+  }),
 );
 
 server.registerTool(

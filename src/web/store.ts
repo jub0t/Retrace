@@ -7,19 +7,27 @@ import {
   BRUSH_STYLES,
   FRAME_MS,
   PALETTE,
+  createAsset,
   createProject,
   createStep,
   getTimeline,
+  parseAssets,
+  parseClipboard,
   parseProject,
+  placeAsset,
   stepEndTime,
+  strokeClipboard,
+  transformStrokes,
   uid,
+  withNewIds,
+  type Asset,
   type BrushStyle,
   type Project,
   type Step,
   type Stroke,
 } from '../core';
 
-export type Tool = 'pen' | 'eraser';
+export type Tool = 'pen' | 'eraser' | 'select';
 
 export interface EditorState {
   project: Project;
@@ -49,9 +57,13 @@ export interface EditorState {
   status: string | null;
   exportMenuOpen: boolean;
   helpOpen: boolean;
+  /** Saved objects, kept in this browser. */
+  library: Asset[];
+  libraryOpen: boolean;
 }
 
 const STORAGE_KEY = 'retrace:project';
+const LIBRARY_KEY = 'retrace:library';
 const HISTORY_LIMIT = 200;
 const NO_SELECTION: ReadonlySet<string> = new Set();
 
@@ -75,6 +87,8 @@ let state: EditorState = {
   status: null,
   exportMenuOpen: false,
   helpOpen: false,
+  library: loadLibrary(),
+  libraryOpen: false,
 };
 
 const listeners = new Set<() => void>();
@@ -82,7 +96,6 @@ let past: Project[] = [];
 let future: Project[] = [];
 /** Project before a continuous gesture (slider drag) began; the whole gesture is one undo step. */
 let gestureBase: Project | null = null;
-let clipboard: Stroke[] = [];
 
 export function getState(): EditorState {
   return state;
@@ -178,10 +191,15 @@ export const actions = {
     commit(updateStep(state.current, (s) => ({ ...s, strokes: s.strokes.filter((st) => !ids.has(st.id)) })));
   },
 
-  /* ---- selection & clipboard (current step only) ---- */
+  /* ---- selection (current step only) ---- */
+
+  setSelection(ids: Iterable<string>) {
+    const set = new Set(ids);
+    setState({ selection: set.size ? set : NO_SELECTION, ...stopPreview });
+  },
 
   selectAll() {
-    setState({ selection: new Set(currentStep().strokes.map((s) => s.id)), ...stopPreview });
+    actions.setSelection(currentStep().strokes.map((s) => s.id));
   },
 
   clearSelection() {
@@ -192,37 +210,94 @@ export const actions = {
     actions.eraseStrokes(state.selection);
   },
 
-  copy() {
-    clipboard = currentStep().strokes.filter((s) => state.selection.has(s.id));
-    if (clipboard.length) setState({ status: `Copied ${clipboard.length} stroke${clipboard.length === 1 ? '' : 's'}` });
+  selectedStrokes(): Stroke[] {
+    return currentStep().strokes.filter((s) => state.selection.has(s.id));
   },
 
-  cut() {
-    actions.copy();
-    actions.deleteSelection();
-  },
-
-  /** Paste into the current step, keeping the original position (and drawing motion). */
-  paste() {
-    if (!clipboard.length) return;
-    const pasted = clipboard.map((s) => ({ ...s, id: uid() }));
-    commit(
-      updateStep(state.current, (s) => ({ ...s, strokes: [...s.strokes, ...pasted] })),
-      { selection: new Set(pasted.map((s) => s.id)), ...stopPreview },
-    );
+  /**
+   * Move/scale the selected strokes of `base` (the project when the drag began).
+   * Called live while dragging and once more with `final` to record one undo step.
+   */
+  transformSelection(base: Project, map: (x: number, y: number) => [number, number], sizeScale: number, final: boolean) {
+    const sel = state.selection;
+    const step = base.steps[state.current];
+    const moved = transformStrokes(step.strokes.filter((st) => sel.has(st.id)), map, sizeScale);
+    const byId = new Map(moved.map((st) => [st.id, st]));
+    const steps = base.steps.slice();
+    steps[state.current] = { ...step, strokes: step.strokes.map((st) => byId.get(st.id) ?? st) };
+    apply({ ...base, steps }, final);
   },
 
   nudgeSelection(dx: number, dy: number) {
-    const sel = state.selection;
-    if (!sel.size) return;
+    if (!state.selection.size) return;
+    actions.transformSelection(state.project, (x, y) => [x + dx, y + dy], 1, true);
+  },
+
+  /* ---- clipboard: plain JSON text, so it works across tabs, sessions and projects ---- */
+
+  /** The selection as clipboard text, or null when nothing is selected. */
+  selectionClipboard(): string | null {
+    const strokes = actions.selectedStrokes();
+    return strokes.length ? strokeClipboard(strokes) : null;
+  },
+
+  /** Paste Retrace strokes or an object from clipboard text. Returns false if it isn't ours. */
+  pasteText(text: string): boolean {
+    const data = parseClipboard(text);
+    if (!data) return false;
+    if (data.type === 'retrace/asset') {
+      actions.insertAsset(data);
+      return true;
+    }
+    // Paste in place, nudged if an identical copy is already sitting there.
+    const existing = new Set(currentStep().strokes.map((s) => `${s.points[0]?.[0]},${s.points[0]?.[1]}`));
+    const overlaps = data.strokes.some((s) => existing.has(`${s.points[0]?.[0]},${s.points[0]?.[1]}`));
+    const pasted = withNewIds(overlaps ? transformStrokes(data.strokes, (x, y) => [x + 24, y + 24]) : data.strokes);
+    actions.addStrokes(pasted);
+    return true;
+  },
+
+  /** Append strokes to the current step and select them. */
+  addStrokes(strokes: Stroke[]) {
     commit(
-      updateStep(state.current, (s) => ({
-        ...s,
-        strokes: s.strokes.map((st) =>
-          sel.has(st.id) ? { ...st, points: st.points.map(([x, y, p, t]) => [x + dx, y + dy, p, t] as typeof st.points[number]) } : st,
-        ),
-      })),
+      updateStep(state.current, (s) => ({ ...s, strokes: [...s.strokes, ...strokes] })),
+      { selection: new Set(strokes.map((s) => s.id)), ...stopPreview, tool: 'select' },
     );
+  },
+
+  /* ---- library of saved objects ---- */
+
+  saveSelectionAsAsset(name: string): Asset | null {
+    const strokes = actions.selectedStrokes();
+    if (!strokes.length) return null;
+    const asset = createAsset(name, strokes);
+    setLibrary([asset, ...state.library]);
+    setState({ libraryOpen: true, status: `Saved "${asset.name}" to your library` });
+    return asset;
+  },
+
+  /** Place a copy of an object into the current step, centered at (x, y) or the artboard center. */
+  insertAsset(asset: Asset, x = state.project.width / 2, y = state.project.height / 2) {
+    actions.addStrokes(placeAsset(asset, x, y));
+  },
+
+  renameAsset(id: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setLibrary(state.library.map((a) => (a.id === id ? { ...a, name: trimmed } : a)));
+  },
+
+  deleteAsset(id: string) {
+    setLibrary(state.library.filter((a) => a.id !== id));
+  },
+
+  /** Add objects from an imported file; returns how many were added. */
+  importAssets(json: string): number {
+    const incoming = parseAssets(JSON.parse(json));
+    const known = new Set(state.library.map((a) => a.id));
+    const fresh = incoming.map((a) => (known.has(a.id) ? { ...a, id: uid() } : a));
+    setLibrary([...fresh, ...state.library]);
+    return fresh.length;
   },
 
   /* ---- steps ---- */
@@ -327,6 +402,25 @@ function scheduleAutosave() {
       // Storage full or blocked (private mode): autosave is a convenience, not a guarantee.
     }
   }, 400);
+}
+
+function setLibrary(library: Asset[]) {
+  setState({ library });
+  try {
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
+  } catch {
+    setState({ status: "Couldn't save the library in this browser (storage full or blocked). Export it to keep it." });
+  }
+}
+
+function loadLibrary(): Asset[] {
+  try {
+    const raw = localStorage.getItem(LIBRARY_KEY);
+    if (raw) return parseAssets(JSON.parse(raw));
+  } catch {
+    // Unreadable library: start empty rather than failing to load the editor.
+  }
+  return [];
 }
 
 function loadAutosave(): Project {

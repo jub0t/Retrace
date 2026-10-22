@@ -6,7 +6,9 @@ import { PALETTE, getTimeline } from '../core';
 import { Canvas } from './Canvas';
 import { openFile, openFromUrlParam, saveFile, saveFileAs, watchLinkedFile } from './files';
 import { HelpPanel } from './HelpPanel';
+import { LibraryPanel } from './LibraryPanel';
 import { MenuBar } from './MenuBar';
+import { SelectionBar } from './SelectionBar';
 import { Timeline } from './Timeline';
 import { Toolbar } from './Toolbar';
 import { actions, getState, setState, useEditor } from './store';
@@ -14,6 +16,7 @@ import { actions, getState, setState, useEditor } from './store';
 export function App() {
   usePlayback();
   useShortcuts();
+  useClipboard();
   useEffect(watchLinkedFile, []);
   useEffect(() => void openFromUrlParam(), []);
 
@@ -23,11 +26,46 @@ export function App() {
         <Canvas />
         <MenuBar />
         <Toolbar />
+        <SelectionBar />
+        <LibraryPanel />
       </main>
       <Timeline />
       <HelpPanel />
     </div>
   );
+}
+
+/**
+ * Copy/cut/paste through real clipboard events, so strokes travel as JSON text between
+ * tabs, sessions and projects (and can be shared in a chat). Text fields keep native behavior.
+ */
+function useClipboard() {
+  useEffect(() => {
+    const inField = (e: Event) => (e.target as HTMLElement | null)?.closest?.('input, select, textarea, [contenteditable]');
+    const onCopy = (e: ClipboardEvent) => {
+      if (inField(e)) return;
+      const text = actions.selectionClipboard();
+      if (!text || !e.clipboardData) return;
+      e.clipboardData.setData('text/plain', text);
+      e.preventDefault();
+      const n = getState().selection.size;
+      if (e.type === 'cut') actions.deleteSelection();
+      setState({ status: `${e.type === 'cut' ? 'Cut' : 'Copied'} ${n} stroke${n === 1 ? '' : 's'}` });
+    };
+    const onPaste = (e: ClipboardEvent) => {
+      if (inField(e)) return;
+      const text = e.clipboardData?.getData('text/plain');
+      if (text && actions.pasteText(text)) e.preventDefault();
+    };
+    window.addEventListener('copy', onCopy);
+    window.addEventListener('cut', onCopy);
+    window.addEventListener('paste', onPaste);
+    return () => {
+      window.removeEventListener('copy', onCopy);
+      window.removeEventListener('cut', onCopy);
+      window.removeEventListener('paste', onPaste);
+    };
+  }, []);
 }
 
 function usePlayback() {
@@ -75,11 +113,10 @@ function useShortcuts() {
         else if (inField) return;
         else if (key === 'z') actions[e.shiftKey ? 'redo' : 'undo']();
         else if (key === 'y') actions.redo();
-        else if (key === 'a') actions.selectAll();
-        else if (key === 'c') actions.copy();
-        else if (key === 'x') actions.cut();
-        else if (key === 'v') actions.paste();
-        else return;
+        else if (key === 'a') {
+          actions.selectAll();
+          setState({ tool: 'select' });
+        } else return; // Copy, cut and paste arrive as clipboard events (see useClipboard).
         e.preventDefault();
         return;
       }
@@ -101,6 +138,8 @@ function useShortcuts() {
       } else if (key === '?' || (key === '/' && e.shiftKey)) setState({ helpOpen: !s.helpOpen });
       else if (key === 'p' || key === 'b') setState({ tool: 'pen' });
       else if (key === 'e') setState({ tool: 'eraser' });
+      else if (key === 'v') setState({ tool: 'select' });
+      else if (key === 'i') setState({ libraryOpen: !s.libraryOpen });
       else if (key === 'o') setState({ onion: !s.onion });
       else if (key === 'l') setState({ loop: !s.loop });
       else if (key === 'n') actions.addStep();

@@ -121,3 +121,46 @@ export const FrameForwardIcon = () => (
     <path d="M17 6v12" />
   </Icon>
 );
+
+export const SelectIcon = () => (
+  <Icon>
+    <path d="M5 3.5l13 6.2-5.6 1.7-2.1 5.6L5 3.5z" />
+    <path d="M12.6 11.6l5 5" />
+  </Icon>
+);
+
+export const LibraryIcon = () => (
+  <Icon>
+    <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+    <circle cx="17" cy="7" r="3.5" />
+    <path d="M7 14l3.5 6.5h-7L7 14z" />
+    <path d="M14 14h6.5v6.5H14z" />
+  </Icon>
+);
+
+export const SaveObjectIcon = () => (
+  <Icon>
+    <path d="M12 3.5v11" />
+    <path d="M7.5 10l4.5 4.5 4.5-4.5" />
+    <path d="M4 15.5v3a2 2 0 002 2h12a2 2 0 002-2v-3" />
+  </Icon>
+);
+
+export const CopyIcon = () => (
+  <Icon>
+    <rect x="8.5" y="8.5" width="11" height="11" rx="2" />
+    <path d="M15.5 8.5V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7.5a2 2 0 002 2h2.5" />
+  </Icon>
+);
+
+export const CloseIcon = () => (
+  <Icon>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </Icon>
+);
+
+export const DownloadIcon = () => (
+  <Icon>
+    <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14" />
+  </Icon>
+);

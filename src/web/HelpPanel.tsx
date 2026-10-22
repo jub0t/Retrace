@@ -10,6 +10,7 @@ const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
 const GROUPS: [string, [string, string][]][] = [
   ['Draw', [
+    ['V', 'Select'],
     ['P', 'Pen'],
     ['E', 'Eraser (current step)'],
     ['1 – 6', 'Pick color'],
@@ -34,9 +35,14 @@ const GROUPS: [string, [string, string][]][] = [
     [`${MOD} Z`, 'Undo'],
     [`${MOD} Shift Z`, 'Redo'],
     [`${MOD} A`, 'Select all in step'],
-    [`${MOD} C / X / V`, 'Copy / cut / paste'],
+    [`${MOD} C / X / V`, 'Copy / cut / paste (works across tabs)'],
     ['⌫', 'Delete selection'],
     ['Arrows', 'Nudge selection'],
+  ]],
+  ['Objects', [
+    ['I', 'Library'],
+    ['Shift click', 'Add to selection'],
+    ['Drag corner', 'Scale selection'],
   ]],
   ['File', [
     [`${MOD} S`, 'Save'],

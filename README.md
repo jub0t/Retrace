@@ -38,6 +38,7 @@ That is the actual animated SVG export: no video and no script. It's one self-pl
 - ✍️ **Real strokes.** Path, pressure and timing are recorded, then replayed at the speed of the hand.
 - 🪜 **Steps.** Each step adds to the drawing, with its own hold time and label.
 - 🖌️ **Brushes, lettering, stick figures.** Five brushes, a single-stroke handwriting font, and posable stick figures.
+- ♻️ **Reusable objects.** Select strokes, save them to your library, and drop them into any drawing.
 - 🎞️ **Timeline.** Frame-accurate scrubbing, loop, onion skin and step thumbnails.
 - 🤖 **MCP built in.** Agents draw, preview their own work and export.
 - 📤 **Export.** MP4/WebM, transparent video and self-playing animated SVG.
@@ -76,6 +77,7 @@ Then ask: *"Make a Retrace explainer in `./cpu.retrace.json` about how a CPU wor
 | `describe_project` | Steps, labels, stroke counts and bounding boxes |
 | `add_step` · `update_step` · `delete_step` | Manage steps |
 | `remove_last_strokes` | Take back a shape that came out wrong |
+| `save_asset` · `place_asset` | Save strokes as a reusable object, then place it anywhere |
 | `update_project` | Playback speed, background |
 | `export_svg` | Animated or static SVG |
 
@@ -98,8 +100,6 @@ One DOM-free core ([src/core/](src/core/)) renders the editor, the exports and t
 
 ## Roadmap
 
-- [ ] Select tool, plus copy/paste across sessions
-- [ ] Reusable assets
 - [ ] Frame-exact video export and GIF
 - [ ] Hosted editor and an `npx` MCP package
 
