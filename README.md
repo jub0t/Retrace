@@ -173,13 +173,3 @@ A project is plain JSON: `steps[]`, each holding `strokes[]`, each storing point
 <a href="https://www.star-history.com/#jub0t/retrace&Date">
   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=jub0t/retrace&type=Date" />
 </a>
-
-## Contributors
-
-<a href="https://github.com/jub0t/Retrace/graphs/contributors">
-  <img alt="Contributors" src="https://contrib.rocks/image?repo=jub0t/retrace" />
-</a>
-
-## License
-
-Copyright 2026 Jareer Abdullah & Retrace Contributors. Licensed under [Apache-2.0](LICENSE); see [NOTICE](NOTICE) for the attribution that redistributions keep.
