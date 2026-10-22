@@ -8,6 +8,8 @@ import { z } from 'zod';
 import {
   BRUSH_STYLES,
   FACES,
+  HAIRS,
+  HANDWRITING_CHARS,
   PALETTE,
   POSES,
   SIZES,
@@ -30,6 +32,7 @@ A project is a JSON file of cumulative steps. Each step adds strokes on top of t
 Canvas: default 1920x1080, origin top-left, units are pixels. Stick figures are ~260px tall by default; leave 80px margins.
 
 Workflow: create_project → for each beat of the explanation: draw (with new_step and a label) → render_preview to check the result → fix with remove_last_strokes if needed → export_svg.
+Text: use the text shape for titles and labels (hand-lettered capitals); keep thumbnail titles to a few words at height 90-150.
 Style tips: one idea per step; draw in the order a person would (outline before details, arrow after the things it connects); use ${PALETTE[0]} for main ink, ${PALETTE[1]} for annotations/arrows, and at most one accent (${PALETTE[2]} or ${PALETTE[3]}); marker brush for most things, highlighter (size ~24) to emphasize; vary seed so repeated shapes don't look identical.
 The user can open the same file in the Drawmation web editor (Open → pick the file) to watch changes live.`;
 
@@ -50,6 +53,17 @@ const shapeSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('curve'), points: z.array(vec).min(2), closed: z.boolean().optional(), ...style }).describe('Smooth curve through the points, one pen stroke'),
   z.object({ type: z.literal('ellipse'), center: vec, rx: z.number().positive(), ry: z.number().positive().optional(), ...style }),
   z.object({ type: z.literal('rect'), x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive(), ...style }),
+  z
+    .object({
+      type: z.literal('text'),
+      text: z.string().min(1),
+      x: z.number().describe('Left edge (or center/right edge, per align)'),
+      y: z.number().describe('Top of the capitals'),
+      height: z.number().positive().optional().describe('Cap height in px, default 60. Nib defaults to height/10'),
+      align: z.enum(['left', 'center', 'right']).optional(),
+      ...style,
+    })
+    .describe(`Hand-lettered capitals, one pen stroke at a time. Supported: ${HANDWRITING_CHARS.trim()} (lowercase is written as capitals)`),
   z.object({
     type: z.literal('stick_figure'),
     x: z.number().describe('Horizontal center'),
@@ -57,6 +71,7 @@ const shapeSchema = z.discriminatedUnion('type', [
     height: z.number().positive().optional().describe('Total height, default 260'),
     pose: z.enum(POSES).optional(),
     face: z.enum(FACES).optional(),
+    hair: z.enum(HAIRS).optional().describe('Default none'),
     facing: z.enum(['left', 'right']).optional(),
     ...style,
   }),

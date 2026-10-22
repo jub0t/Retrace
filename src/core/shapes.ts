@@ -1,4 +1,5 @@
 import type { BrushStyle } from './brushes';
+import { measureText, textPenPaths } from './handwriting';
 import { humanizePath, type Vec } from './humanize';
 import { PALETTE, SIZES, uid, type Stroke } from './model';
 
@@ -16,6 +17,16 @@ export type Shape = ShapeStyle &
     | { type: 'ellipse'; center: Vec; rx: number; ry?: number }
     | { type: 'rect'; x: number; y: number; width: number; height: number }
     | {
+        type: 'text';
+        text: string;
+        /** Top-left of the first capital. */
+        x: number;
+        y: number;
+        /** Cap height in px (default 60). The nib defaults to about a tenth of it. */
+        height?: number;
+        align?: 'left' | 'center' | 'right';
+      }
+    | {
         type: 'stick_figure';
         /** Where the feet touch the ground. */
         x: number;
@@ -23,6 +34,7 @@ export type Shape = ShapeStyle &
         height?: number;
         pose?: Pose;
         face?: Face;
+        hair?: Hair;
         facing?: 'left' | 'right';
       }
   );
@@ -35,8 +47,10 @@ export interface ShapeStyle {
 
 export const POSES = ['stand', 'wave', 'cheer', 'point', 'think', 'shrug'] as const;
 export const FACES = ['happy', 'neutral', 'sad', 'surprised', 'none'] as const;
+export const HAIRS = ['none', 'messy', 'spiky', 'long'] as const;
 export type Pose = (typeof POSES)[number];
 export type Face = (typeof FACES)[number];
+export type Hair = (typeof HAIRS)[number];
 
 export interface DrawContext {
   rand: () => number;
@@ -52,7 +66,8 @@ type PenPath = Vec[][];
 
 export function shapeToStrokes(shape: Shape, ctx: DrawContext): Stroke[] {
   const color = shape.color ?? ctx.color ?? PALETTE[0];
-  const size = shape.size ?? ctx.size ?? SIZES.medium;
+  const textNib = shape.type === 'text' ? Math.max(3, (shape.height ?? 60) / 10) : undefined;
+  const size = shape.size ?? textNib ?? ctx.size ?? SIZES.medium;
   const brush = shape.brush ?? ctx.brush;
   const wobble = ctx.wobble ?? 1;
   return penPaths(shape, ctx.rand, wobble).map((segments) => ({
@@ -106,6 +121,13 @@ function penPaths(shape: Shape, rand: () => number, wobble: number): PenPath[] {
       return [pairs([miss([x, y]), [x + w, y], [x + w, y + h], [x, y + h], [x, y], miss([x + over, y - 1])])];
     }
 
+    case 'text': {
+      const h = shape.height ?? 60;
+      const w = measureText(shape.text, h);
+      const x = shape.align === 'center' ? shape.x - w / 2 : shape.align === 'right' ? shape.x - w : shape.x;
+      return textPenPaths(shape.text, x, shape.y, h, rand, wobble);
+    }
+
     case 'stick_figure':
       return stickFigure(shape, rand);
   }
@@ -136,8 +158,12 @@ function ellipsePath(center: Vec, rx: number, ry: number, rand: () => number, wo
   // Start near the top and go counter-clockwise (how most people draw circles),
   // overshooting past the start with a slight spiral so the ends don't line up exactly.
   const start = -Math.PI / 2 - 0.3 - rand() * 0.6;
-  const sweep = Math.PI * 2 + 0.25 + rand() * 0.3;
-  const drift = (rand() - 0.5) * 0.08 * wobble;
+  // Overshoot by roughly a fixed arc length (~40-70px), not a fixed angle, so big circles
+  // don't end in a long doubled-up stretch where the slow start and slow finish overlap.
+  const overshoot = clamp(55 / ((rx + ry) / 2), 0.1, 0.55) * (0.75 + rand() * 0.5);
+  const sweep = Math.PI * 2 + overshoot;
+  // The closing pass spirals in or out a little so it sits beside the start, not on it.
+  const drift = (rand() < 0.5 ? -1 : 1) * (0.018 + rand() * 0.022) * wobble;
   const squash = rand() * Math.PI;
   const n = Math.max(24, Math.ceil((Math.max(rx, ry) * sweep) / 6));
   const pts: Vec[] = [];
@@ -199,6 +225,7 @@ function stickFigure(shape: Extract<Shape, { type: 'stick_figure' }>, rand: () =
 
   const paths: PenPath[] = [
     [ellipsePath(head, headR, headR * 1.05, rand, 0.6)],
+    ...hairPaths(shape.hair ?? 'none', head, headR, dir, rand),
     [[neck, hip]],
     pairs(arms[pose][0]),
     pairs(arms[pose][1]),
@@ -220,6 +247,33 @@ function stickFigure(shape: Extract<Shape, { type: 'stick_figure' }>, rand: () =
     if (face === 'surprised') paths.push([ellipsePath([fx, my + 3], w * 0.4, w * 0.5, rand, 0.3)]);
   }
   return paths;
+}
+
+/** Hair hugs the top of the head, drawn right after the head outline. */
+function hairPaths(hair: Hair, [hx, hy]: Vec, r: number, dir: number, rand: () => number): PenPath[] {
+  if (hair === 'none') return [];
+  const at = (deg: number, k: number): Vec => {
+    const a = (deg * Math.PI) / 180;
+    return [hx + Math.cos(a) * r * k, hy + Math.sin(a) * r * k];
+  };
+  // Angles run over the top of the head (screen y is down, so -90 is straight up).
+  const sweep = (from: number, to: number, n: number, inner: number, outer: number) =>
+    Array.from({ length: n + 1 }, (_, i) => at(from + ((to - from) * i) / n + (rand() - 0.5) * 6, i % 2 ? outer : inner));
+
+  if (hair === 'spiky') return [pairs(sweep(-200, 20, 10, 1.02, 1.45))];
+  if (hair === 'messy') {
+    return [
+      [catmullRom(sweep(-205, 25, 12, 0.98, 1.28))],
+      [catmullRom(sweep(-170, -10, 7, 1.05, 1.22))],
+    ];
+  }
+  // long: a scribbly cap, then strands falling past the jaw on both sides.
+  const back = dir > 0 ? -1 : 1;
+  return [
+    [catmullRom(sweep(-210, 30, 12, 0.98, 1.24))],
+    [catmullRom([at(-150, 1.1), at(-190, 1.18), [hx + back * r * 1.2, hy + r * 1.1], [hx + back * r * 1.1, hy + r * 1.9]])],
+    [catmullRom([at(-40, 1.1), at(-5, 1.15), [hx - back * r * 1.12, hy + r * 1.0], [hx - back * r * 1.0, hy + r * 1.6]])],
+  ];
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));

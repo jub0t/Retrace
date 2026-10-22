@@ -5,6 +5,8 @@ import { actions, getState, subscribe, useEditor } from './store';
 import { Kbd, cx } from './ui';
 
 const PADDING = 32;
+/** Room for the floating menu bar and toolbar, so they never cover the artboard. */
+const TOP_CHROME = 64;
 const ERASER_RADIUS = 14;
 
 interface Layout {
@@ -35,8 +37,8 @@ export function Canvas() {
     const wrap = wrapRef.current!;
     const measure = () => {
       const { width, height } = wrap.getBoundingClientRect();
-      const scale = Math.max(0.05, Math.min((width - PADDING * 2) / pw, (height - PADDING * 2) / ph));
-      setLayout({ width, height, scale, ox: (width - pw * scale) / 2, oy: (height - ph * scale) / 2 });
+      const scale = Math.max(0.05, Math.min((width - PADDING * 2) / pw, (height - TOP_CHROME - PADDING) / ph));
+      setLayout({ width, height, scale, ox: (width - pw * scale) / 2, oy: TOP_CHROME + (height - TOP_CHROME - PADDING - ph * scale) / 2 });
     };
     measure();
     const ro = new ResizeObserver(measure);

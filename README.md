@@ -1,94 +1,185 @@
-# Drawmation
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg" />
+    <img src="assets/logo-light.svg" alt="Drawmation" width="96" />
+  </picture>
+</p>
 
-Draw step by step, then play it back exactly the way a hand drew it.
+<h1 align="center">Drawmation</h1>
+<h3 align="center">Draw step by step. Play it back like a human drew it.</h3>
 
-Drawmation is a free, open-source tool for hand-drawn explainer animations, in the style of [cpu.land](https://cpu.land/): scrawled marker strokes, gray notes, one accent color. Every stroke keeps its pen path and timing, so the animation looks human rather than like a motion-graphics template. You can draw with a mouse, pen or touch, or have an AI agent draw for you over MCP.
+<div align="center">
 
-## Features
+<img src="assets/editor.jpg" alt="The Drawmation editor with a hand-drawn explainer thumbnail" width="100%" />
 
-- **Steps.** Each step adds strokes on top of the ones before it. Playback draws each stroke at the speed it was drawn, then holds for that step's hold time.
-- **Brushes.** Marker, ink pen, pencil, brush and highlighter, each with a precise size slider.
-- **Timeline.** Thumbnail cells, a frame-accurate scrubber (60 fps), frame stepping, loop, onion skin, per-step hold and labels, and a global speed control.
-- **Editing.** Undo/redo, plus select all, copy/cut/paste and nudge within a step.
-- **Export.** Video (MP4/WebM), transparent WebM for overlays, and self-playing animated SVG.
-- **AI-native.** An MCP server lets agents draw humanized shapes (lines, arrows, curves, boxes, ellipses, stick figures with poses and faces) and look at their own work through PNG previews.
-- **Live link.** Open a project file in the editor and watch an AI agent's edits appear as they happen (Chromium browsers).
-- **Private and offline.** Runs entirely in the browser. Projects are plain JSON files.
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-5B5BD6?style=flat&labelColor=212123" alt="License: Apache-2.0" /></a>
+  <a href="#use-it-with-ai-mcp"><img src="https://img.shields.io/badge/MCP-built%20in-5B5BD6?style=flat&labelColor=212123" alt="MCP server built in" /></a>
+  <img src="https://img.shields.io/badge/Runs%20in-the%20browser-5B5BD6?style=flat&labelColor=212123" alt="Runs in the browser" />
+  <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat&logo=typescript&logoColor=F8F8F8&labelColor=212123" alt="TypeScript" />
+  <a href="https://github.com/jub0t/drawmation/pulls"><img src="https://img.shields.io/badge/PRs-welcome-2F9E44?style=flat&labelColor=212123" alt="PRs welcome" /></a>
+</p>
 
-## Quick start
+</div>
 
-```bash
-pnpm install     # or npm install
-pnpm dev         # editor at http://localhost:5173
-pnpm build       # static editor in dist/ + MCP server in dist-mcp/
+## About
+
+Drawmation is a free, open-source tool for hand-drawn explainer animations: the scrawled-marker, stick-figure style of [cpu.land](https://cpu.land/) and countless YouTube explainers.
+
+You draw one stroke, add a step, draw the next. Every stroke keeps the path and timing of your hand, so playback redraws it exactly the way you drew it. Nothing gets tweened and nothing looks like a template. It looks like a person drew it, because one did.
+
+Or an AI did. Drawmation ships an **MCP server**, so Claude and other agents can draw too. A humanizer gives every generated line a natural wobble, overshoot and pen speed. The thumbnail above was drawn entirely in code ([scripts/demo.ts](scripts/demo.ts)), hand-lettered title included.
+
+**Good for:** YouTube explainers, thumbnails, tutorials, course videos, blog illustrations, and anything that should feel made by hand.
+
+## Watch it draw itself
+
+<p align="center">
+  <img src="assets/demo.svg" alt="The thumbnail above, drawing itself stroke by stroke" width="100%" />
+</p>
+
+That is the actual animated SVG export: no video and no script. It's one self-playing file you can drop into any web page. Open [assets/demo.drawmation.json](assets/demo.drawmation.json) in the editor to see how it was built, step by step.
+
+## Highlights
+
+- ✍️ **Real strokes, real timing.** Each stroke records its path, pressure and timing. Playback redraws it at the speed of the hand.
+- 🪜 **Steps, not keyframes.** Each step adds to the drawing. Set how long it holds, give it a name, reorder it.
+- 🖌️ **Five brushes.** Marker, ink pen, pencil, brush and highlighter, sized to the half-pixel with a precise slider.
+- 🎞️ **A timeline that respects your time.** Frame-accurate scrubbing at 60 fps, frame stepping, loop, onion skin, thumbnails for every step.
+- 🔤 **Hand-lettered text.** A built-in single-stroke handwriting font, written one stroke at a time like everything else.
+- 🧍 **Stick figures on demand.** Six poses, five faces, three hairstyles, drawn in the order a person would.
+- 🤖 **AI-native.** A built-in MCP server lets agents draw, preview their own work as PNG, fix mistakes and export.
+- 🔗 **Live link.** Open a project file and watch an agent's edits appear while it works.
+- 📤 **Export.** MP4 or WebM video, transparent WebM for overlays, and self-playing animated SVG.
+- ⌨️ **Keyboard-first.** Every command has a shortcut. Press <kbd>?</kbd> to see them all.
+- 🔒 **Yours.** It runs in your browser, uploads nothing and works offline. Projects are plain JSON files you can diff and share.
+
+## Get started
+
+You need [Node.js](https://nodejs.org/) 20 or newer and [pnpm](https://pnpm.io/) (npm works too).
+
+```sh
+git clone https://github.com/jub0t/drawmation.git
+cd drawmation
+pnpm install
+pnpm dev          # the editor, at http://localhost:5173
 ```
 
-Press <kbd>?</kbd> in the editor to see every shortcut.
+```sh
+pnpm build        # static editor in dist/ + MCP server in dist-mcp/
+pnpm demo         # regenerate the README demo from scripts/demo.ts
+pnpm typecheck
+```
 
-## Using it with AI (MCP)
+`dist/` is a plain static site. Host it anywhere (GitHub Pages, Netlify, a USB stick).
 
-Build the server once with `pnpm build:mcp`, then register it with your MCP client.
+## Use it with AI (MCP)
 
-**Claude Code:** this repo includes `.mcp.json`, so the server is picked up automatically inside the project. To use it from anywhere:
+Build the server once:
 
-```bash
+```sh
+pnpm build:mcp
+```
+
+**Claude Code** picks it up automatically inside this repo (see [.mcp.json](.mcp.json)). To use it from anywhere:
+
+```sh
 claude mcp add drawmation -- node /absolute/path/to/drawmation/dist-mcp/server.js
 ```
 
-**Claude Desktop and other clients:**
+**Claude Desktop, Cursor and other MCP clients:**
 
 ```json
 {
   "mcpServers": {
-    "drawmation": { "command": "node", "args": ["/absolute/path/to/drawmation/dist-mcp/server.js"] }
+    "drawmation": {
+      "command": "node",
+      "args": ["/absolute/path/to/drawmation/dist-mcp/server.js"]
+    }
   }
 }
 ```
 
-Then ask something like *"Make a Drawmation animation in ./cpu.drawmation.json explaining the fetch-execute cycle with a stick figure."* To watch it being drawn, open that file in the editor (**Open**). The editor reloads it whenever the agent saves.
+Then ask for something like:
+
+> Make a Drawmation explainer in `./fetch.drawmation.json`: a stick figure discovers how a CPU fetches and executes instructions. One idea per step, with a hand-lettered title.
+
+To watch it happen, open the same file in the editor with **Open**. Each time the agent saves, the drawing updates.
+
+<details>
+<summary><b>Tools the server provides</b></summary>
 
 | Tool | What it does |
 | --- | --- |
 | `create_project` | New project file (default 1920×1080) |
 | `draw` | Draw shapes as humanized strokes, optionally into a new labeled step |
-| `render_preview` | PNG of the drawing up to a step, so the agent can check its work |
+| `render_preview` | A PNG of the drawing up to any step, so the agent can check its work |
 | `describe_project` | Steps, labels, stroke counts and bounding boxes |
-| `add_step` / `update_step` / `delete_step` | Manage steps, labels and hold times |
-| `remove_last_strokes` | Undo a shape that came out wrong |
+| `add_step` · `update_step` · `delete_step` | Manage steps, labels and hold times |
+| `remove_last_strokes` | Take back a shape that came out wrong |
 | `update_project` | Playback speed, background |
 | `export_svg` | Animated (or static) SVG |
 
-The humanizer makes generated strokes look hand-drawn:
+Shapes: `line`, `arrow`, `polyline`, `curve`, `ellipse`, `rect`, `text` and `stick_figure`, each with optional `color`, `size` and `brush`.
 
-- **Wobble:** a low-frequency sideways wander, pinned at both ends.
-- **Hand motion:** the pen speeds up and slows down along each stroke, with a short pause at corners.
-- **Overshoot:** circles start near the top and run past their starting point.
-- **Stroke order:** shapes are drawn the way a person would draw them.
+```json
+{ "type": "stick_figure", "x": 1440, "y": 1015, "height": 520, "pose": "point", "face": "surprised", "hair": "messy", "facing": "left" }
+{ "type": "text", "text": "How does it work?!", "x": 960, "y": 80, "height": 110, "align": "center" }
+{ "type": "arrow", "from": [1230, 640], "to": [930, 600], "bend": 0.2, "color": "#e03131" }
+```
 
-A seed makes every drawing reproducible.
+</details>
 
-## Project layout
+## How it works
+
+Generated lines usually look generated. The **humanizer** ([src/core/humanize.ts](src/core/humanize.ts)) turns ideal geometry into strokes that look like a hand made them:
+
+- **Wobble:** a low-frequency sideways wander, pinned at both ends so lines still connect.
+- **Pen speed:** each stroke speeds up and slows down along its path, and pauses briefly at corners. The marker gets slightly heavier where the pen moves slowly.
+- **Habits:** circles start near the top, run counter-clockwise and close past their start. Endpoints miss by a hair. Each letter gets its own small tilt and drift.
+- **Order:** shapes are drawn in the order a person draws them. Head, then body, then arms. Arrow shaft, then head.
+
+A seed makes every result reproducible.
+
+Rendering runs through one shared core, so the editor canvas, the exports and the MCP previews all look identical:
 
 ```
-src/core/   Pure TypeScript, no DOM: file format, brushes, stroke geometry,
-            playback timeline, humanizer + shapes, SVG rendering
+src/core/   No DOM. File format, brushes, stroke geometry, timeline,
+            humanizer, shapes, handwriting, SVG rendering
 src/web/    The editor (React + Tailwind)
-src/mcp/    MCP server (stdio), built on the same core
+src/mcp/    The MCP server (stdio), on the same core
+scripts/    The README demo, built with the core API
 ```
 
-The same core renders the editor canvas, exports and MCP previews, so they all match.
-
-### File format
-
-A `.drawmation.json` file stores `steps[]`. Each step holds `strokes[]`, and each stroke stores its points as `[x, y, pressure, t]`, where `t` is milliseconds since the stroke started. See [src/core/model.ts](src/core/model.ts).
+A project is plain JSON: `steps[]`, each holding `strokes[]`, each storing points as `[x, y, pressure, t]`, where `t` is milliseconds since the stroke began. See [src/core/model.ts](src/core/model.ts).
 
 ## Roadmap
 
-- Frame-exact video export (WebCodecs) and GIF
-- Handwritten and typed text
-- Selection tool (lasso, move, scale), layers, and scene cuts that clear the board
-- Canvas zoom and pan, and a dark theme
-- MCP video export and a published `npx` package
+- [ ] Select tool: pick strokes, move them, and copy/paste across sessions and projects
+- [ ] Reusable assets: save a figure once, drop it into any drawing
+- [ ] Frame-exact video export (WebCodecs) and GIF
+- [ ] Lowercase handwriting and more glyphs
+- [ ] Scene cuts, layers, canvas zoom and pan, dark theme
+- [ ] A hosted editor and an `npx` package for the MCP server
+
+## How to contribute
+
+> [!IMPORTANT]
+> The best way to help is to make something with Drawmation, then tell us where it fought you. [Open an issue](https://github.com/jub0t/drawmation/issues) with what you tried and what you expected.
+>
+> Ready to write code? Run `pnpm dev`, keep `pnpm typecheck` green, and keep the core free of DOM APIs so the editor and the MCP server stay in sync. New shapes, poses, glyphs and brushes are especially welcome: they live in [src/core/](src/core/).
+
+## Star History
+
+<a href="https://www.star-history.com/#jub0t/drawmation&Date">
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=jub0t/drawmation&type=Date" />
+</a>
+
+## Contributors
+
+<a href="https://github.com/jub0t/drawmation/graphs/contributors">
+  <img alt="Contributors" src="https://contrib.rocks/image?repo=jub0t/drawmation" />
+</a>
 
 ## License
 

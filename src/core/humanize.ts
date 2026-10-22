@@ -25,6 +25,7 @@ export interface HumanizeOptions {
 const SAMPLE_MS = 8; // ~120 Hz, like a real pointer
 const RESAMPLE_PX = 2;
 const CORNER_DWELL_MS = 35;
+const MOMENTUM = 0.3;
 
 /**
  * Turns an ideal pen path into points that look recorded from a human hand.
@@ -89,7 +90,9 @@ export function humanizePath(segments: Vec[][], opts: HumanizeOptions): Point[] 
     const steps = Math.max(2, Math.ceil(dur / SAMPLE_MS));
     for (let i = k === 0 ? 0 : 1; i <= steps; i++) {
       const tau = i / steps;
-      const s = s0 + len * (10 * tau ** 3 - 15 * tau ** 4 + 6 * tau ** 5);
+      // Mostly minimum-jerk, with some constant speed mixed in: the pen lands already
+      // moving, so velocity-simulated pressure doesn't pool ink into blobs at the ends.
+      const s = s0 + len * (MOMENTUM * tau + (1 - MOMENTUM) * (10 * tau ** 3 - 15 * tau ** 4 + 6 * tau ** 5));
       const [x, y] = pointAtLength(wobbled, cum, s);
       points.push([round2(x), round2(y), 0.5, Math.round(t0 + tau * dur)]);
     }
