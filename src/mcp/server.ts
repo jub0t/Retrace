@@ -26,6 +26,7 @@ import {
   parseProject,
   renderAnimatedSvg,
   renderSvg,
+  sceneStart,
   shapeToStrokes,
   strokesBounds,
   type Project,
@@ -35,6 +36,7 @@ import {
 const INSTRUCTIONS = `Retrace makes hand-drawn explainer animations: scrawled black marker on off-white, gray annotations, one accent color.
 
 A project is a JSON file of cumulative steps. Each step adds strokes on top of the previous ones; playback redraws every stroke at human hand speed, then holds.
+Scenes: a step marked new_scene wipes the canvas before it draws, so a longer video is a run of scenes, each building up over a few steps.
 Canvas: default 1920x1080, origin top-left, units are pixels. Stick figures are ~260px tall by default; leave 80px margins.
 
 Workflow: create_project → for each beat of the explanation: draw (with new_step and a label) → render_preview to check the result → fix with remove_last_strokes if needed → export_svg.
@@ -142,6 +144,8 @@ server.registerTool(
       shapes: z.array(shapeSchema).min(1),
       step: z.number().int().min(0).optional().describe('Step index to draw into; default is the last step'),
       new_step: z.boolean().optional().describe('Append a new step and draw into it (ignores `step`)'),
+      new_scene: z.boolean().optional().describe('Like new_step, but the new step starts a new scene: the canvas is wiped before it draws'),
+      step_speed: z.number().positive().optional().describe('Playback speed of the new step, times the project speed (e.g. 3 for captions written briskly)'),
       label: z.string().optional().describe('Label for the new step, e.g. "CPU fetches an instruction"'),
       hold: z.number().min(0).optional().describe('Pause after the new step, ms (default 400)'),
       color: z.string().optional().describe(`Default color for these shapes (default ${PALETTE[0]})`),
@@ -153,12 +157,12 @@ server.registerTool(
       seed: z.number().int().optional().describe('Random seed for reproducible wobble'),
     },
   },
-  tool(async ({ file, shapes, step, new_step, label, hold, color, size, brush, gradient, wobble, speed, seed }) => {
+  tool(async ({ file, shapes, step, new_step, new_scene, step_speed, label, hold, color, size, brush, gradient, wobble, speed, seed }) => {
     const path = resolve(file);
     const project = await load(path);
     let index = step ?? project.steps.length - 1;
-    if (new_step) {
-      index = appendStep(project, { label, hold });
+    if (new_step || new_scene) {
+      index = appendStep(project, { label, hold, newScene: new_scene || undefined, speed: step_speed });
     } else if (!project.steps[index]) {
       throw new Error(`No step ${index}; the project has steps 0..${project.steps.length - 1}`);
     }
@@ -175,19 +179,21 @@ server.registerTool(
   'add_step',
   {
     title: 'Add step',
-    description: 'Insert an empty step. Steps are cumulative: everything drawn in earlier steps stays visible.',
+    description: 'Insert an empty step. Steps are cumulative: everything drawn in earlier steps of the same scene stays visible.',
     inputSchema: {
       file: fileArg,
       label: z.string().optional(),
       hold: z.number().min(0).optional().describe('Pause after this step, ms (default 400)'),
       after: z.number().int().min(-1).optional().describe('Insert after this step index; default is at the end, -1 inserts first'),
+      new_scene: z.boolean().optional().describe('Start a new scene: wipe the canvas before this step draws'),
+      speed: z.number().positive().optional().describe('Playback speed of this step, times the project speed'),
     },
   },
-  tool(async ({ file, label, hold, after }) => {
+  tool(async ({ file, label, hold, after, new_scene, speed }) => {
     const path = resolve(file);
     const project = await load(path);
     const at = after === undefined ? project.steps.length : after + 1;
-    project.steps.splice(at, 0, createStep(stripUndefined({ label, hold })));
+    project.steps.splice(at, 0, createStep(stripUndefined({ label, hold, newScene: new_scene || undefined, speed })));
     await save(path, project);
     return `Added step ${at}. The project now has ${project.steps.length} steps.`;
   }),
@@ -197,22 +203,26 @@ server.registerTool(
   'update_step',
   {
     title: 'Update step',
-    description: 'Change a step\'s label or hold, or clear all of its strokes.',
+    description: 'Change a step\'s label, hold, playback speed or scene break, or clear all of its strokes.',
     inputSchema: {
       file: fileArg,
       step: z.number().int().min(0),
       label: z.string().optional(),
       hold: z.number().min(0).optional(),
       clear: z.boolean().optional().describe('Remove every stroke in the step'),
+      new_scene: z.boolean().optional().describe('true: this step starts a new scene (canvas wiped first); false: it continues the previous scene'),
+      speed: z.number().positive().optional().describe('Playback speed of this step, times the project speed; 1 resets it'),
     },
   },
-  tool(async ({ file, step, label, hold, clear }) => {
+  tool(async ({ file, step, label, hold, clear, new_scene, speed }) => {
     const path = resolve(file);
     const project = await load(path);
     const s = getStep(project, step);
     if (label !== undefined) s.label = label;
     if (hold !== undefined) s.hold = hold;
     if (clear) s.strokes = [];
+    if (new_scene !== undefined) s.newScene = new_scene || undefined;
+    if (speed !== undefined) s.speed = speed === 1 ? undefined : speed;
     await save(path, project);
     return `Updated step ${step}.`;
   }),
@@ -287,7 +297,7 @@ server.registerTool(
     description: 'Render the drawing as it looks at the end of a step, as a PNG image. Use it to check layout and fix mistakes.',
     inputSchema: {
       file: fileArg,
-      step: z.number().int().min(0).optional().describe('Show everything up to and including this step; default is the last step'),
+      step: z.number().int().min(0).optional().describe('Show this step\'s scene up to and including this step; default is the last step'),
       width: z.number().int().min(200).max(1920).optional().describe('Image width in px (default 960)'),
     },
     annotations: { readOnlyHint: true },
@@ -301,7 +311,7 @@ server.registerTool(
       return {
         content: [
           { type: 'image' as const, data: Buffer.from(png).toString('base64'), mimeType: 'image/png' },
-          { type: 'text' as const, text: `Steps 0..${upto} of ${project.steps.length}. Image is scaled ${(width / project.width).toFixed(2)}x from project coordinates.` },
+          { type: 'text' as const, text: `Steps ${sceneStart(project, upto)}..${upto} of ${project.steps.length}. Image is scaled ${(width / project.width).toFixed(2)}x from project coordinates.` },
         ],
       };
     } catch (err) {
@@ -423,7 +433,7 @@ async function save(path: string, project: Project): Promise<void> {
  * Start a new step at the end. A trailing empty, unlabeled step (like the one every new
  * project starts with) is reused, so agents don't leave a blank step at the front.
  */
-function appendStep(project: Project, init: { label?: string; hold?: number }): number {
+function appendStep(project: Project, init: { label?: string; hold?: number; newScene?: boolean; speed?: number }): number {
   const last = project.steps[project.steps.length - 1];
   if (last && !last.strokes.length && !last.label) {
     Object.assign(last, stripUndefined(init));
@@ -447,7 +457,8 @@ function describe(project: Project): string {
     ...project.steps.map((s, i) => {
       const b = strokesBounds(s.strokes);
       const where = b ? ` at x=${b.x} y=${b.y} ${b.width}x${b.height}` : '';
-      return `  ${i}. ${s.label ? `"${s.label}" ` : ''}${s.strokes.length} stroke(s)${where}, hold ${s.hold}ms`;
+      const speed = s.speed && s.speed !== 1 ? `, ${s.speed}x speed` : '';
+      return `  ${i}. ${s.newScene && i > 0 ? '[new scene] ' : ''}${s.label ? `"${s.label}" ` : ''}${s.strokes.length} stroke(s)${where}, hold ${s.hold}ms${speed}`;
     }),
   ];
   return lines.join('\n');

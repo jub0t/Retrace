@@ -164,3 +164,75 @@ export const DownloadIcon = () => (
     <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14" />
   </Icon>
 );
+
+export const HandIcon = () => (
+  <Icon>
+    <path d="M8 12V5.5a1.5 1.5 0 013 0V11" />
+    <path d="M11 10.5v-6a1.5 1.5 0 013 0V11" />
+    <path d="M14 6.5a1.5 1.5 0 013 0V12" />
+    <path d="M17 9.5a1.5 1.5 0 013 0V15a6 6 0 01-6 6h-1.5a6 6 0 01-4.6-2.2L4.6 15.4a1.6 1.6 0 012.4-2.1L8 14.5" />
+  </Icon>
+);
+
+export const GridIcon = () => (
+  <Icon>
+    <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
+    <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+    <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
+    <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+  </Icon>
+);
+
+export const SceneIcon = () => (
+  <Icon>
+    <rect x="3.5" y="9" width="17" height="11" rx="2" />
+    <path d="M3.8 9l15.4-4.2-.9-3.1L4 5.7z" />
+    <path d="M8.5 4.4l2 3M13 3.2l2 3" />
+  </Icon>
+);
+
+export const DuplicateIcon = () => (
+  <Icon>
+    <rect x="8" y="8" width="12" height="12" rx="2" />
+    <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" />
+  </Icon>
+);
+
+export const MinusIcon = () => (
+  <Icon>
+    <path d="M5 12h14" />
+  </Icon>
+);
+
+export const MoreIcon = () => (
+  <Icon>
+    <circle cx="6" cy="12" r="0.6" fill="currentColor" />
+    <circle cx="12" cy="12" r="0.6" fill="currentColor" />
+    <circle cx="18" cy="12" r="0.6" fill="currentColor" />
+  </Icon>
+);
+
+export const ChevronDownIcon = () => (
+  <Icon>
+    <path d="M7 10l5 5 5-5" />
+  </Icon>
+);
+
+export const FolderIcon = () => (
+  <Icon>
+    <path d="M3.5 7.5a2 2 0 012-2h3.8l2 2.2h7.2a2 2 0 012 2V17a2 2 0 01-2 2H5.5a2 2 0 01-2-2z" />
+  </Icon>
+);
+
+export const ExportIcon = () => (
+  <Icon>
+    <path d="M12 15V4M7.5 8.5L12 4l4.5 4.5" />
+    <path d="M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4" />
+  </Icon>
+);
+
+export const FitIcon = () => (
+  <Icon>
+    <path d="M4 9V5.5A1.5 1.5 0 015.5 4H9M15 4h3.5A1.5 1.5 0 0120 5.5V9M20 15v3.5a1.5 1.5 0 01-1.5 1.5H15M9 20H5.5A1.5 1.5 0 014 18.5V15" />
+  </Icon>
+);

@@ -46,6 +46,16 @@ export interface Stroke {
   brush?: BrushStyle;
   /** Mouse/touch/generated input has no real pressure, so derive it from velocity instead. */
   simulatePressure: boolean;
+  /**
+   * Fill color for the area the stroke encloses (its centerline, closed with a straight
+   * edge). Opaque, so it covers whatever is underneath. Appears once the line is finished.
+   */
+  fill?: string;
+  /**
+   * Stacking order, independent of when the stroke draws: higher layers paint on top.
+   * Strokes on the same layer stack in drawing order. Defaults to 0.
+   */
+  layer?: number;
 }
 
 export interface Step {
@@ -55,6 +65,16 @@ export interface Step {
   strokes: Stroke[];
   /** Pause after this step finishes drawing, in ms. */
   hold: number;
+  /** Starts a new scene: the canvas is wiped before this step draws. */
+  newScene?: boolean;
+  /** The scene's name, kept on the scene's first step. */
+  sceneName?: string;
+  /**
+   * Playback speed for this step, multiplied with the project speed. Applies to the pen
+   * motion and the pauses between strokes, so captions can be written briskly while
+   * drawings keep a natural pace. Defaults to 1.
+   */
+  speed?: number;
 }
 
 export interface Project {
@@ -64,8 +84,57 @@ export interface Project {
   background: string;
   /** Playback speed multiplier applied to recorded drawing motion. */
   speed: number;
-  /** Steps are cumulative: showing step N shows the strokes of steps 0..N. */
+  /** Steps are cumulative within a scene: showing step N shows the strokes of steps S..N, where S starts N's scene. */
   steps: Step[];
+}
+
+/**
+ * Strokes in the order they're painted, bottom to top: by layer, then in drawing order.
+ * Stable, and returns the input untouched when nothing is layered.
+ */
+export function paintOrder<T>(items: T[], strokeOf: (item: T) => Stroke): T[] {
+  if (!items.some((it) => strokeOf(it).layer)) return items;
+  return items
+    .map((item, i) => ({ item, i, layer: strokeOf(item).layer ?? 0 }))
+    .sort((a, b) => a.layer - b.layer || a.i - b.i)
+    .map((e) => e.item);
+}
+
+/** A step's effective playback rate: project speed times the step's own speed. */
+export function stepRate(project: Project, step: Step): number {
+  return project.speed * (step.speed && step.speed > 0 ? step.speed : 1);
+}
+
+export interface SceneInfo {
+  /** 0-based position among the project's scenes. */
+  index: number;
+  /** First and last step index of the scene. */
+  first: number;
+  last: number;
+  name?: string;
+}
+
+/** The project's scenes in order: runs of steps, each starting at step 0 or a `newScene` step. */
+export function scenesOf(project: Project): SceneInfo[] {
+  const scenes: SceneInfo[] = [];
+  project.steps.forEach((step, i) => {
+    if (i === 0 || step.newScene) scenes.push({ index: scenes.length, first: i, last: i, name: step.sceneName });
+    else scenes[scenes.length - 1].last = i;
+  });
+  return scenes;
+}
+
+/** The scene that contains `step`. */
+export function sceneOf(project: Project, step: number): SceneInfo {
+  const scenes = scenesOf(project);
+  return scenes.find((s) => step >= s.first && step <= s.last) ?? scenes[scenes.length - 1];
+}
+
+/** Index of the step that starts the scene containing `step`. */
+export function sceneStart(project: Project, step: number): number {
+  let i = Math.min(step, project.steps.length - 1);
+  while (i > 0 && !project.steps[i].newScene) i--;
+  return Math.max(0, i);
 }
 
 /** Ink colors tuned for the off-white background: ink, pencil gray, then accents. */

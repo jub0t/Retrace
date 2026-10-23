@@ -1,14 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
-import { brushOf, gradientBox, gradientGeometry, sortedStops, getTimeline, pointsAt, strokeDuration, strokeOutlinePath, visibleStrokes, type Project, type Stroke } from '../core';
+import { brushOf, gradientBox, gradientGeometry, sortedStops, getTimeline, paintOrder, pointsAt, strokeDuration, strokeFillPath, strokeOutlinePath, visibleStrokes, type Project, type Stroke } from '../core';
 
-// Finished strokes are immutable, so their outline can be built once.
+// Finished strokes are immutable, so their outline (and fill area) can be built once.
 const pathCache = new WeakMap<Stroke, Path2D>();
+const fillCache = new WeakMap<Stroke, Path2D>();
 
 /** Draw a stroke, or only the part drawn `elapsed` ms into its recorded motion. */
 export function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke, elapsed = Infinity): void {
   if (elapsed >= strokeDuration(stroke)) {
+    if (stroke.fill) {
+      let area = fillCache.get(stroke);
+      if (!area) {
+        area = new Path2D(strokeFillPath(stroke));
+        fillCache.set(stroke, area);
+      }
+      ctx.fillStyle = stroke.fill;
+      ctx.fill(area);
+    }
     let path = pathCache.get(stroke);
     if (!path) {
       path = new Path2D(strokeOutlinePath(stroke));
@@ -60,5 +70,15 @@ export function drawBackground(ctx: CanvasRenderingContext2D, project: Project, 
 /** One playback frame at `time` ms, in project coordinates. */
 export function drawFrame(ctx: CanvasRenderingContext2D, project: Project, time: number, transparent = false): void {
   drawBackground(ctx, project, transparent);
-  for (const { stroke, elapsed } of visibleStrokes(getTimeline(project), time)) drawStroke(ctx, stroke, elapsed);
+  for (const { stroke, elapsed } of paintOrder([...visibleStrokes(getTimeline(project), time)], (v) => v.stroke)) drawStroke(ctx, stroke, elapsed);
+}
+
+/** Draw strokes bottom to top by layer (each with an optional alpha, e.g. onion-skin dimming). */
+export function drawStack(ctx: CanvasRenderingContext2D, items: { stroke: Stroke; alpha?: number }[]): void {
+  const base = ctx.globalAlpha;
+  for (const { stroke, alpha = 1 } of paintOrder(items, (it) => it.stroke)) {
+    ctx.globalAlpha = base * alpha;
+    drawStroke(ctx, stroke);
+  }
+  ctx.globalAlpha = base;
 }

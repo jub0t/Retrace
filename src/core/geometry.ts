@@ -35,6 +35,15 @@ function svgPathFromOutline(points: number[][]): string {
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
+/** The area a filled stroke encloses: its centerline, closed with a straight edge. */
+export function strokeFillPath(stroke: Stroke): string {
+  const pts = stroke.points;
+  if (pts.length < 3) return '';
+  const d = [`M${round(pts[0][0])} ${round(pts[0][1])}`];
+  for (let i = 1; i < pts.length; i++) d.push(`L${round(pts[i][0])} ${round(pts[i][1])}`);
+  return `${d.join('')}Z`;
+}
+
 /** Points of the stroke drawn by `elapsed` ms into it (in recorded time). */
 export function pointsAt(stroke: Stroke, elapsed: number): Point[] {
   const pts = stroke.points;

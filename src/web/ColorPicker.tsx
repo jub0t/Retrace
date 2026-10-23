@@ -7,7 +7,7 @@ import { colorAt, hexToHsv, hsvToHex, normalizeHex, type Hsv } from './color';
 import { TrashIcon } from './icons';
 import { Slider } from './Slider';
 import { actions, getState, useEditor } from './store';
-import { IconButton, Popover, cx } from './ui';
+import { IconButton, Popover, cx, type PopoverSide } from './ui';
 import { usePopover } from './usePopover';
 
 const HUE_TRACK = 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)';
@@ -28,7 +28,7 @@ function startingGradient(color: string): Gradient {
 }
 
 /** The toolbar's custom-paint swatch: shows the current color or gradient, opens the picker. */
-export function PaintButton() {
+export function PaintButton({ side = 'bottom' }: { side?: PopoverSide }) {
   const color = useEditor((s) => s.color);
   const gradient = useEditor((s) => s.gradient);
   const custom = gradient !== null || !(PALETTE as readonly string[]).includes(color);
@@ -52,12 +52,12 @@ export function PaintButton() {
       >
         <span className="size-full rounded-full border-2 border-white" style={{ background: gradient ? gradientCss(gradient) : color }} />
       </button>
-      {open && <PaintPopover />}
+      {open && <PaintPopover side={side} />}
     </div>
   );
 }
 
-function PaintPopover() {
+function PaintPopover({ side }: { side: PopoverSide }) {
   const color = useEditor((s) => s.color);
   const gradient = useEditor((s) => s.gradient);
   const selected = useEditor((s) => s.selection.size);
@@ -73,7 +73,7 @@ function PaintPopover() {
   };
 
   return (
-    <Popover className="left-1/2 w-[288px] -translate-x-1/2" role="dialog" aria-label="Color">
+    <Popover side={side} className={cx('w-[288px]', side === 'bottom' && 'left-1/2 -translate-x-1/2')} role="dialog" aria-label="Color">
       <div className="mb-3 grid grid-cols-2 rounded-lg bg-hover p-0.5 text-xs font-medium" role="tablist">
         {(['solid', 'gradient'] as const).map((t) => (
           <button
@@ -252,7 +252,7 @@ function StopsBar({ gradient, active, onSelect, onChange }: { gradient: Gradient
 }
 
 /** Saturation/brightness square, hue slider, hex field and eyedropper for one color. */
-function ColorEditor({ value, onChange }: { value: string; onChange: (hex: string, final: boolean) => void }) {
+export function ColorEditor({ value, onChange }: { value: string; onChange: (hex: string, final: boolean) => void }) {
   const [hsv, setHsv] = useState(() => hexToHsv(value));
   useEffect(() => {
     // Follow outside changes (palette clicks, another stop) but keep our hue for grays.

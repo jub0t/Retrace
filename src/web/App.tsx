@@ -3,35 +3,77 @@
 
 import { useEffect } from 'react';
 import { PALETTE, getTimeline } from '../core';
-import { Canvas } from './Canvas';
+import { Canvas, zoomBy, zoomToActual, zoomToFit } from './Canvas';
 import { openFile, openFromUrlParam, saveFile, saveFileAs, watchLinkedFile } from './files';
 import { HelpPanel } from './HelpPanel';
-import { LibraryPanel } from './LibraryPanel';
-import { MenuBar } from './MenuBar';
-import { SelectionBar } from './SelectionBar';
+import { Inspector } from './Inspector';
+import { ProjectsHome } from './ProjectsHome';
 import { Timeline } from './Timeline';
-import { Toolbar } from './Toolbar';
-import { actions, getState, setState, useEditor } from './store';
+import { ToolRail } from './ToolRail';
+import { TopBar } from './TopBar';
+import { actions, flushSave, getState, initStorage, setState, useEditor } from './store';
 
 export function App() {
+  const screen = useEditor((s) => s.screen);
   usePlayback();
   useShortcuts();
   useClipboard();
   useEffect(watchLinkedFile, []);
-  useEffect(() => void openFromUrlParam(), []);
+  useEffect(() => void initStorage().then(openFromUrlParam), []);
+  useEffect(() => {
+    // Don't lose the last half-second of edits when the tab closes or goes to the background.
+    const flush = () => void flushSave();
+    const onVisibility = () => document.hidden && flush();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, []);
 
   return (
-    <div className="grid h-full grid-rows-[1fr_auto]">
-      <main className="relative min-h-0">
-        <Canvas />
-        <MenuBar />
-        <Toolbar />
-        <SelectionBar />
-        <LibraryPanel />
-      </main>
-      <Timeline />
+    <>
+      {screen === 'loading' ? (
+        <div className="grid h-full place-items-center text-muted">Loading your projects…</div>
+      ) : screen === 'home' ? (
+        <ProjectsHome />
+      ) : (
+        <div className="grid h-full grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto]">
+          <TopBar />
+          <div className="flex min-h-0">
+            <ToolRail />
+            <main className="relative min-w-0 flex-1">
+              <Canvas />
+            </main>
+            <Inspector />
+          </div>
+          <Timeline />
+        </div>
+      )}
       <HelpPanel />
-    </div>
+      <Toast />
+    </>
+  );
+}
+
+/** Status messages, briefly, at the bottom of the screen. */
+function Toast() {
+  const status = useEditor((s) => s.status);
+  useEffect(() => {
+    if (!status) return;
+    const t = setTimeout(() => setState({ status: null }), 5000);
+    return () => clearTimeout(t);
+  }, [status]);
+  if (!status) return null;
+  return (
+    <button
+      className="fixed bottom-6 left-1/2 z-40 max-w-[min(560px,calc(100%-32px))] -translate-x-1/2 animate-pop-in truncate rounded-lg bg-ink px-4 py-2.5 text-white shadow-pop"
+      onClick={() => setState({ status: null })}
+      title="Dismiss"
+    >
+      {status}
+    </button>
   );
 }
 
@@ -43,7 +85,7 @@ function useClipboard() {
   useEffect(() => {
     const inField = (e: Event) => (e.target as HTMLElement | null)?.closest?.('input, select, textarea, [contenteditable]');
     const onCopy = (e: ClipboardEvent) => {
-      if (inField(e)) return;
+      if (inField(e) || getState().screen !== 'editor') return;
       const text = actions.selectionClipboard();
       if (!text || !e.clipboardData) return;
       e.clipboardData.setData('text/plain', text);
@@ -53,7 +95,7 @@ function useClipboard() {
       setState({ status: `${e.type === 'cut' ? 'Cut' : 'Copied'} ${n} stroke${n === 1 ? '' : 's'}` });
     };
     const onPaste = (e: ClipboardEvent) => {
-      if (inField(e)) return;
+      if (inField(e) || getState().screen !== 'editor') return;
       const text = e.clipboardData?.getData('text/plain');
       if (text && actions.pasteText(text)) e.preventDefault();
     };
@@ -106,10 +148,18 @@ function useShortcuts() {
       const key = e.key.toLowerCase();
       const inField = (e.target as HTMLElement).closest('input, select, textarea, [contenteditable]');
 
+      if (mod && key === 'o') {
+        e.preventDefault();
+        void openFile();
+        return;
+      }
+      if (s.screen !== 'editor') return;
+
       if (mod) {
         if (key === 's') e.shiftKey ? saveFileAs() : saveFile();
-        else if (key === 'o') openFile();
         else if (key === 'e') setState({ exportMenuOpen: !s.exportMenuOpen });
+        else if (key === '=' || key === '+') zoomBy(1.25);
+        else if (key === '-' || key === '_') zoomBy(1 / 1.25);
         else if (inField) return;
         else if (key === 'z') actions[e.shiftKey ? 'redo' : 'undo']();
         else if (key === 'y') actions.redo();
@@ -136,13 +186,16 @@ function useShortcuts() {
         else if (s.selection.size) actions.deleteSelection();
         else return;
       } else if (key === '?' || (key === '/' && e.shiftKey)) setState({ helpOpen: !s.helpOpen });
+      else if (e.shiftKey && e.code === 'Digit1') zoomToFit();
+      else if (e.shiftKey && e.code === 'Digit0') zoomToActual();
       else if (key === 'p' || key === 'b') setState({ tool: 'pen' });
       else if (key === 'e') setState({ tool: 'eraser' });
       else if (key === 'v') setState({ tool: 'select' });
-      else if (key === 'i') setState({ libraryOpen: !s.libraryOpen });
+      else if (key === 'h') setState({ tool: 'hand' });
+      else if (key === 'i') setState({ panel: s.panel === 'library' ? 'properties' : 'library' });
       else if (key === 'o') setState({ onion: !s.onion });
       else if (key === 'l') setState({ loop: !s.loop });
-      else if (key === 'n') actions.addStep();
+      else if (key === 'n') e.shiftKey ? actions.addScene() : actions.addStep();
       else if (key === 'arrowleft') actions.selectStep(s.current - 1);
       else if (key === 'arrowright') actions.selectStep(s.current + 1);
       else if (key === ',' || key === '<') actions.stepFrame(e.shiftKey ? -10 : -1);

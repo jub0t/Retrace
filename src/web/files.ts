@@ -2,7 +2,7 @@
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
 import { renderAnimatedSvg } from '../core';
-import { actions, getState, parseProjectJson, setState } from './store';
+import { actions, getState, parseProjectJson, setState, subscribe } from './store';
 
 /*
  * In Chromium browsers the File System Access API lets the editor keep a handle to the
@@ -26,23 +26,47 @@ interface PickerWindow {
 
 const fs = window as unknown as PickerWindow;
 const TYPES = [{ description: 'Retrace project', accept: { 'application/json': ['.json'] } }];
-const SUGGESTED_NAME = 'animation.retrace.json';
+const EXTENSION = '.retrace.json';
 
 let handle: FileHandle | null = null;
 let lastModified = 0;
+/** The browser project the file handle belongs to; switching projects drops the link. */
+let linkedProject: string | null = null;
 
+subscribe(() => {
+  if (handle && getState().projectId !== linkedProject) handle = null;
+});
+
+function link(h: FileHandle, modified: number) {
+  handle = h;
+  lastModified = modified;
+  linkedProject = getState().projectId;
+  setState({ fileName: h.name });
+}
+
+/** A project name from a file name: "rick-and-morty.retrace.json" → "rick-and-morty". */
+export function nameFromFile(fileName: string): string {
+  return fileName.replace(/\.retrace\.json$|\.json$/i, '') || 'Untitled';
+}
+
+/** A file name for the open project. */
+export function projectFileName(suffix = EXTENSION): string {
+  const base = getState().projectName.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'animation';
+  return `${base}${suffix}`;
+}
+
+/** Open a project file as a new project in the browser. In Chromium it stays linked to the file. */
 export async function openFile(): Promise<void> {
   try {
     if (fs.showOpenFilePicker) {
       const [h] = await fs.showOpenFilePicker({ types: TYPES });
       const file = await h.getFile();
       const project = parseProjectJson(await file.text());
-      handle = h;
-      lastModified = file.lastModified;
-      actions.loadProject(project, h.name);
+      await actions.createProject(project, nameFromFile(h.name));
+      link(h, file.lastModified);
     } else {
       const file = await pickFileFallback();
-      if (file) actions.loadProject(parseProjectJson(await file.text()), null);
+      if (file) await actions.createProject(parseProjectJson(await file.text()), nameFromFile(file.name));
     }
   } catch (err) {
     reportError(err);
@@ -52,7 +76,7 @@ export async function openFile(): Promise<void> {
 export async function saveFile(): Promise<void> {
   const json = JSON.stringify(getState().project);
   try {
-    if (!handle && fs.showSaveFilePicker) handle = await fs.showSaveFilePicker({ suggestedName: SUGGESTED_NAME, types: TYPES });
+    if (!handle && fs.showSaveFilePicker) link(await fs.showSaveFilePicker({ suggestedName: projectFileName(), types: TYPES }), 0);
     if (handle) {
       const w = await handle.createWritable();
       await w.write(json);
@@ -60,7 +84,7 @@ export async function saveFile(): Promise<void> {
       lastModified = (await handle.getFile()).lastModified;
       setState({ fileName: handle.name, dirty: false, diskChanged: false, status: `Saved ${handle.name}` });
     } else {
-      download(new Blob([json], { type: 'application/json' }), SUGGESTED_NAME);
+      download(new Blob([json], { type: 'application/json' }), projectFileName());
       setState({ dirty: false });
     }
   } catch (err) {
@@ -74,10 +98,6 @@ export async function saveFileAs(): Promise<void> {
   handle = null;
   await saveFile();
   handle ??= previous; // picker cancelled: stay linked to the old file
-}
-
-export function unlinkFile(): void {
-  handle = null;
 }
 
 export async function reloadFromDisk(): Promise<void> {
@@ -104,7 +124,7 @@ export async function openFromUrlParam(): Promise<void> {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Couldn't open ${url} (${res.status})`);
-    actions.loadProject(parseProjectJson(await res.text()), null);
+    await actions.createProject(parseProjectJson(await res.text()), nameFromFile(url.split('/').pop() ?? ''));
   } catch (err) {
     reportError(err);
   }
@@ -129,7 +149,7 @@ export function watchLinkedFile(): () => void {
 
 export function exportAnimatedSvg(transparent: boolean): void {
   const svg = renderAnimatedSvg(getState().project, { transparent });
-  download(new Blob([svg], { type: 'image/svg+xml' }), 'animation.svg');
+  download(new Blob([svg], { type: 'image/svg+xml' }), projectFileName(transparent ? '-transparent.svg' : '.svg'));
 }
 
 export function download(blob: Blob, name: string): void {

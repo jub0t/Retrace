@@ -2,9 +2,9 @@
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
 import { brushOf } from './brushes';
-import { strokeOutlinePath } from './geometry';
+import { strokeFillPath, strokeOutlinePath } from './geometry';
 import { svgPaint } from './paint';
-import type { Project, Stroke } from './model';
+import { paintOrder, sceneStart, type Project, type Stroke } from './model';
 import { getTimeline } from './timeline';
 
 export interface SvgOptions {
@@ -17,10 +17,12 @@ export interface SvgOptions {
 export function renderSvg(project: Project, opts: SvgOptions = {}): string {
   const upto = opts.uptoStep ?? project.steps.length - 1;
   const defs: string[] = [];
-  const paths = project.steps.slice(0, upto + 1).flatMap((step) => step.strokes).map((s, i) => {
+  const strokes = paintOrder(project.steps.slice(sceneStart(project, upto), upto + 1).flatMap((step) => step.strokes), (s) => s);
+  const paths = strokes.map((s, i) => {
     const paint = svgPaint(s, `p${i}`);
     if (paint.def) defs.push(paint.def);
-    return `<path d="${strokeOutlinePath(s)}" fill="${paint.fill}"${opacityAttr(s)}/>`;
+    const area = s.fill ? `<path d="${strokeFillPath(s)}" fill="${s.fill}"/>` : '';
+    return `${area}<path d="${strokeOutlinePath(s)}" fill="${paint.fill}"${opacityAttr(s)}/>`;
   });
   const body = (defs.length ? `<defs>\n${defs.join('\n')}\n</defs>\n` : '') + paths.join('\n');
   return wrap(project, body, opts.transparent);
@@ -45,7 +47,7 @@ export function renderAnimatedSvg(project: Project, opts: AnimatedSvgOptions = {
 
   const defs: string[] = [];
   const paths: string[] = [];
-  timeline.strokes.forEach(({ stroke, start, duration }, i) => {
+  paintOrder(timeline.strokes.map((t, i) => ({ ...t, i })), (t) => t.stroke).forEach(({ stroke, start, duration, end, i }) => {
     const { centerline, lengths } = measure(stroke);
     const L = lengths[lengths.length - 1];
     const w = stroke.size * 1.6;
@@ -69,7 +71,21 @@ export function renderAnimatedSvg(project: Project, opts: AnimatedSvgOptions = {
     );
     const paint = svgPaint(stroke, `p${i}`);
     if (paint.def) defs.push(paint.def);
-    paths.push(`<path d="${strokeOutlinePath(stroke)}" fill="${paint.fill}"${opacityAttr(stroke)} mask="url(#m${i})"/>`);
+    // A later scene wipes the canvas: hide the stroke from that moment until the loop restarts.
+    const wipe = Number.isFinite(end)
+      ? `<animate attributeName="opacity" dur="${fmt(total / 1000)}s" repeatCount="${repeat}" fill="freeze" calcMode="discrete" keyTimes="0;${(end / total).toFixed(5)}" values="1;0"/>`
+      : '';
+    if (stroke.fill) {
+      // The fill appears once the outline is finished, and goes with it when the scene ends.
+      const shown = ((start + duration) / total).toFixed(5);
+      const keys = Number.isFinite(end) ? { t: `0;${shown};${(end / total).toFixed(5)}`, v: '0;1;0' } : { t: `0;${shown}`, v: '0;1' };
+      paths.push(
+        `<path d="${strokeFillPath(stroke)}" fill="${stroke.fill}" opacity="0">` +
+          `<animate attributeName="opacity" dur="${fmt(total / 1000)}s" repeatCount="${repeat}" fill="freeze" calcMode="discrete" keyTimes="${keys.t}" values="${keys.v}"/></path>`,
+      );
+    }
+    const attrs = `d="${strokeOutlinePath(stroke)}" fill="${paint.fill}"${opacityAttr(stroke)} mask="url(#m${i})"`;
+    paths.push(wipe ? `<path ${attrs}>${wipe}</path>` : `<path ${attrs}/>`);
   });
 
   return wrap(project, `<defs>\n${defs.join('\n')}\n</defs>\n${paths.join('\n')}`, opts.transparent);

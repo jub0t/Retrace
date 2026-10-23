@@ -10,15 +10,17 @@ const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
 const GROUPS: [string, [string, string][]][] = [
   ['Draw', [
-    ['V', 'Select'],
+    ['V', 'Select (any visible stroke)'],
     ['P', 'Pen'],
-    ['E', 'Eraser (current step)'],
+    ['E', 'Eraser (any visible stroke)'],
+    ['H', 'Hand: drag to pan'],
     ['1 – 6', 'Pick color'],
     ['− / =', 'Brush size'],
     ['O', 'Onion skin'],
   ]],
-  ['Steps', [
+  ['Steps & scenes', [
     ['N', 'New step after current'],
+    ['Shift N', 'New scene (clean canvas)'],
     ['← / →', 'Previous / next step'],
     ['[ / ]', 'Move step'],
     ['Shift ⌫', 'Delete step'],
@@ -31,10 +33,18 @@ const GROUPS: [string, [string, string][]][] = [
     ['L', 'Loop'],
     ['Esc', 'Back to editing'],
   ]],
+  ['View', [
+    ['Scroll', 'Pan the canvas'],
+    [`Pinch · ${MOD} scroll`, 'Zoom the canvas'],
+    [`${MOD} = / −`, 'Zoom in / out'],
+    ['Shift 1', 'Fit to screen'],
+    ['Shift 0', 'Zoom to 100%'],
+    [`${MOD} scroll`, 'Zoom the timeline'],
+  ]],
   ['Edit', [
     [`${MOD} Z`, 'Undo'],
     [`${MOD} Shift Z`, 'Redo'],
-    [`${MOD} A`, 'Select all in step'],
+    [`${MOD} A`, 'Select everything visible'],
     [`${MOD} C / X / V`, 'Copy / cut / paste (works across tabs)'],
     ['⌫', 'Delete selection'],
     ['Arrows', 'Nudge selection'],
@@ -45,9 +55,9 @@ const GROUPS: [string, [string, string][]][] = [
     ['Drag corner', 'Scale selection'],
   ]],
   ['File', [
-    [`${MOD} S`, 'Save'],
+    [`${MOD} S`, 'Save to file'],
     [`${MOD} Shift S`, 'Save as'],
-    [`${MOD} O`, 'Open'],
+    [`${MOD} O`, 'Open file as new project'],
     [`${MOD} E`, 'Export'],
   ]],
 ];

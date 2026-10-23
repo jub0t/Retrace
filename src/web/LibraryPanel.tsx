@@ -2,19 +2,17 @@
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { ASSET_EXTENSION, brushOf, strokeOutlinePath, svgPaint, type Asset } from '../core';
+import { ASSET_EXTENSION, brushOf, paintOrder, strokeFillPath, strokeOutlinePath, svgPaint, type Asset } from '../core';
 import { ASSET_DRAG_TYPE } from './Canvas';
 import { download } from './files';
-import { CloseIcon, DownloadIcon, TrashIcon } from './icons';
+import { DownloadIcon, TrashIcon } from './icons';
 import { actions, setState, useEditor } from './store';
-import { IconButton, Island, Kbd, TextButton, cx } from './ui';
+import { Kbd, TextButton, cx } from './ui';
 
-/** Saved objects: click to add to the current step, or drag onto the canvas. */
+/** Saved objects, as the inspector's Library tab: click to add to the current step, or drag onto the canvas. */
 export function LibraryPanel() {
-  const open = useEditor((s) => s.libraryOpen);
   const library = useEditor((s) => s.library);
   const fileRef = useRef<HTMLInputElement>(null);
-  if (!open) return null;
 
   const importFiles = async (files: FileList | null) => {
     let added = 0;
@@ -30,10 +28,10 @@ export function LibraryPanel() {
   };
 
   return (
-    <Island className="absolute top-[64px] right-3 bottom-3 z-10 flex w-[264px] animate-pop-in flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-line py-1.5 pr-1.5 pl-3.5">
-        <span className="font-semibold">
-          Library <span className="ml-1 font-normal text-muted tabular-nums">{library.length || ''}</span>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex items-center justify-between border-b border-line py-1.5 pr-1.5 pl-4">
+        <span className="text-muted tabular-nums">
+          {library.length} object{library.length === 1 ? '' : 's'}
         </span>
         <span className="flex items-center gap-0.5">
           <TextButton className="h-7 px-2 text-xs" onClick={() => fileRef.current?.click()} title="Import objects from .json files">
@@ -48,9 +46,6 @@ export function LibraryPanel() {
               Export
             </TextButton>
           )}
-          <IconButton size="sm" aria-label="Close library" title="Close (I)" onClick={() => setState({ libraryOpen: false })}>
-            <CloseIcon />
-          </IconButton>
         </span>
         <input
           ref={fileRef}
@@ -81,9 +76,9 @@ export function LibraryPanel() {
         </div>
       )}
       <p className="border-t border-line px-3.5 py-2 text-[11px] leading-snug text-faint">
-        Click to add, or drag onto the canvas. Objects stay in this browser; export them to share.
+        Click to add, or drag onto the canvas. Objects are shared by all your projects in this browser; export them to share.
       </p>
-    </Island>
+    </div>
   );
 }
 
@@ -173,9 +168,9 @@ function AssetCard({ asset }: { asset: Asset }) {
 const AssetThumb = memo(function AssetThumb({ asset }: { asset: Asset }) {
   const paths = useMemo(
     () =>
-      asset.strokes.map((s, i) => {
+      paintOrder(asset.strokes, (s) => s).map((s, i) => {
         const paint = svgPaint(s, `${asset.id}-${i}`);
-        return { d: strokeOutlinePath(s), fill: paint.fill, def: paint.def, opacity: brushOf(s.brush).opacity };
+        return { d: strokeOutlinePath(s), fill: paint.fill, def: paint.def, opacity: brushOf(s.brush).opacity, area: s.fill ? { d: strokeFillPath(s), fill: s.fill } : null };
       }),
     [asset.id, asset.strokes],
   );
@@ -190,7 +185,10 @@ const AssetThumb = memo(function AssetThumb({ asset }: { asset: Asset }) {
     >
       {defs && <defs dangerouslySetInnerHTML={{ __html: defs }} />}
       {paths.map((p, i) => (
-        <path key={i} d={p.d} fill={p.fill} fillOpacity={p.opacity} />
+        <g key={i}>
+          {p.area && <path d={p.area.d} fill={p.area.fill} />}
+          <path d={p.d} fill={p.fill} fillOpacity={p.opacity} />
+        </g>
       ))}
     </svg>
   );

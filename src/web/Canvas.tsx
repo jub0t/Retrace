@@ -2,75 +2,99 @@
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { distanceToStroke, strokesBounds, uid, type Bounds, type Project, type Stroke } from '../core';
-import { drawBackground, drawFrame, drawLiveStroke, drawStroke } from './render';
-import { actions, getState, subscribe, useEditor } from './store';
-import { Kbd, cx } from './ui';
+import { distanceToStroke, paintOrder, sceneStart, strokesBounds, uid, type Bounds, type Project, type Stroke } from '../core';
+import { FitIcon, MinusIcon, PlusIcon } from './icons';
+import { drawBackground, drawFrame, drawLiveStroke, drawStack } from './render';
+import { actions, editableRange, editableStrokes, getState, setState, subscribe, useEditor, type View } from './store';
+import { IconButton, Kbd, cx } from './ui';
 
-const PADDING = 32;
-/** Room for the floating menu bar and toolbar, so they never cover the artboard. */
-const TOP_CHROME = 64;
+const PADDING = 40;
 const ERASER_RADIUS = 14;
 /** Screen-pixel sizes for selection chrome, so it feels the same at any zoom. */
 const SELECT_PAD = 8;
 const HANDLE_SIZE = 10;
 const HIT_SLOP = 6;
+const MIN_ZOOM = 0.05;
+const MAX_ZOOM = 8;
 export const ASSET_DRAG_TYPE = 'application/x-retrace-asset';
 
-type SelectDrag =
+type Drag =
   | { kind: 'move'; start: [number, number]; base: Project; map?: (x: number, y: number) => [number, number] }
   | { kind: 'scale'; anchor: [number, number]; startDist: number; base: Project; k?: number }
-  | { kind: 'marquee'; start: [number, number]; end: [number, number]; additive: boolean };
+  | { kind: 'marquee'; start: [number, number]; end: [number, number]; additive: boolean }
+  | { kind: 'pan'; x: number; y: number; view: View };
 
-interface Layout {
-  width: number;
-  height: number;
-  scale: number;
-  ox: number;
-  oy: number;
+/** Size of the canvas area, kept at module level so zoom commands from anywhere can center on it. */
+let area = { width: 0, height: 0 };
+
+function fitView(project: Project): View {
+  const scale = Math.max(MIN_ZOOM, Math.min((area.width - PADDING * 2) / project.width, (area.height - PADDING * 2) / project.height));
+  return { scale, x: (area.width - project.width * scale) / 2, y: (area.height - project.height * scale) / 2 };
 }
 
-/** The artboard: fixed project-size frame scaled to fit, where strokes are drawn and played back. */
+function currentView(): View {
+  const { view, project } = getState();
+  return view ?? fitView(project);
+}
+
+/** Zoom by `factor` around a point in canvas-area pixels (default: the center). */
+export function zoomBy(factor: number, cx = area.width / 2, cy = area.height / 2): void {
+  const v = currentView();
+  const scale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, v.scale * factor));
+  const k = scale / v.scale;
+  setState({ view: { scale, x: cx - (cx - v.x) * k, y: cy - (cy - v.y) * k } });
+}
+
+export function zoomToFit(): void {
+  setState({ view: null });
+}
+
+/** 100%: one project pixel per screen pixel, centered. */
+export function zoomToActual(): void {
+  const { project } = getState();
+  setState({ view: { scale: 1, x: (area.width - project.width) / 2, y: (area.height - project.height) / 2 } });
+}
+
+/** The artboard: drawn on, selected on, played back on. Zooms and pans like any canvas editor. */
 export function Canvas() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [layout, setLayout] = useState<Layout | null>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const tool = useEditor((s) => s.tool);
   const previewing = useEditor((s) => s.playhead !== null);
   const empty = useEditor((s) => s.project.steps.every((st) => st.strokes.length === 0));
-  const pw = useEditor((s) => s.project.width);
-  const ph = useEditor((s) => s.project.height);
 
   const draft = useRef<{ stroke: Stroke; start: number } | null>(null);
   const erasing = useRef<Set<string> | null>(null);
   const hover = useRef<[number, number] | null>(null);
-  const hoverStroke = useRef<string | null>(null);
-  const selectDrag = useRef<SelectDrag | null>(null);
+  const hoverStroke = useRef<{ id: string; step: number } | null>(null);
+  const drag = useRef<Drag | null>(null);
   const frame = useRef(0);
 
   useLayoutEffect(() => {
     const wrap = wrapRef.current!;
     const measure = () => {
       const { width, height } = wrap.getBoundingClientRect();
-      const scale = Math.max(0.05, Math.min((width - PADDING * 2) / pw, (height - TOP_CHROME - PADDING) / ph));
-      setLayout({ width, height, scale, ox: (width - pw * scale) / 2, oy: TOP_CHROME + (height - TOP_CHROME - PADDING - ph * scale) / 2 });
+      area = { width, height };
+      setSize({ width, height });
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(wrap);
     return () => ro.disconnect();
-  }, [pw, ph]);
+  }, []);
 
   const paint = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !layout) return;
-    const { project, current, onion, playhead, selection, tool, size } = getState();
+    if (!canvas || !size) return;
+    const { project, current, onion, playhead, selection, tool, size: brushSize } = getState();
+    const v = currentView();
     const ctx = canvas.getContext('2d')!;
     const dpr = window.devicePixelRatio || 1;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(dpr * layout.scale, 0, 0, dpr * layout.scale, dpr * layout.ox, dpr * layout.oy);
+    ctx.setTransform(dpr * v.scale, 0, 0, dpr * v.scale, dpr * v.x, dpr * v.y);
 
     // Paper lifted off the workspace (shadow sizes are in device pixels, unaffected by the transform).
     ctx.save();
@@ -90,24 +114,30 @@ export function Canvas() {
       drawFrame(ctx, project, playhead);
     } else {
       drawBackground(ctx, project);
+      const [from] = editableRange(project, current);
+      const stack: { stroke: Stroke; alpha: number }[] = [];
       project.steps.forEach((step, i) => {
-        if (i > current + (onion ? 1 : 0)) return;
-        ctx.globalAlpha = i === current ? 1 : i < current ? (onion ? 0.25 : 1) : 0.08;
-        for (const s of step.strokes) if (!(i === current && erasing.current?.has(s.id))) drawStroke(ctx, s);
+        if (i < from || i > current + (onion ? 1 : 0)) return;
+        if (i > current && step.newScene) return; // the next scene isn't on this canvas
+        const alpha = i === current ? 1 : i < current ? (onion ? 0.25 : 1) : 0.08;
+        for (const stroke of step.strokes) if (!erasing.current?.has(stroke.id)) stack.push({ stroke, alpha });
       });
-      ctx.globalAlpha = 1;
+      drawStack(ctx, stack);
       if (draft.current) drawLiveStroke(ctx, draft.current.stroke);
     }
     ctx.restore();
 
-    const px = 1 / layout.scale;
-    if (playhead === null && tool === 'select' && hoverStroke.current && !selection.has(hoverStroke.current)) {
-      const hovered = project.steps[current].strokes.find((s) => s.id === hoverStroke.current);
-      const hb = hovered && strokesBounds([hovered]);
+    const px = 1 / v.scale;
+    const hovered = hoverStroke.current;
+    if (playhead === null && tool === 'select' && hovered && !selection.has(hovered.id)) {
+      const stroke = project.steps[hovered.step]?.strokes.find((s) => s.id === hovered.id);
+      const hb = stroke && strokesBounds([stroke]);
       if (hb) {
         ctx.lineWidth = 1.5 * px;
         ctx.strokeStyle = 'rgba(91, 91, 214, 0.45)';
         ctx.strokeRect(hb.x - 4 * px, hb.y - 4 * px, hb.width + 8 * px, hb.height + 8 * px);
+        // Strokes from earlier steps say where they live.
+        if (hovered.step !== current) badge(ctx, `Step ${hovered.step + 1}`, hb.x - 4 * px, hb.y - 6 * px, px);
       }
     }
 
@@ -127,10 +157,10 @@ export function Canvas() {
       }
     }
 
-    const drag = selectDrag.current;
-    if (drag?.kind === 'marquee') {
-      const [x0, y0] = drag.start;
-      const [x1, y1] = drag.end;
+    const d = drag.current;
+    if (d?.kind === 'marquee') {
+      const [x0, y0] = d.start;
+      const [x1, y1] = d.end;
       ctx.fillStyle = 'rgba(91, 91, 214, 0.08)';
       ctx.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
       ctx.lineWidth = 1 * px;
@@ -138,15 +168,15 @@ export function Canvas() {
       ctx.strokeRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
     }
 
-    if (playhead === null && hover.current && tool !== 'select') {
+    if (playhead === null && hover.current && (tool === 'pen' || tool === 'eraser')) {
       const [hx, hy] = hover.current;
       ctx.beginPath();
-      ctx.arc(hx, hy, tool === 'eraser' ? ERASER_RADIUS : size / 2, 0, Math.PI * 2);
-      ctx.lineWidth = 1.5 / layout.scale;
+      ctx.arc(hx, hy, tool === 'eraser' ? ERASER_RADIUS : brushSize / 2, 0, Math.PI * 2);
+      ctx.lineWidth = 1.5 * px;
       ctx.strokeStyle = tool === 'eraser' ? '#868e96' : 'rgba(30,30,30,0.35)';
       ctx.stroke();
     }
-  }, [layout]);
+  }, [size]);
 
   const requestPaint = useCallback(() => {
     cancelAnimationFrame(frame.current);
@@ -155,18 +185,37 @@ export function Canvas() {
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !layout) return;
+    if (!canvas || !size) return;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(layout.width * dpr);
-    canvas.height = Math.round(layout.height * dpr);
+    canvas.width = Math.round(size.width * dpr);
+    canvas.height = Math.round(size.height * dpr);
     paint();
-  }, [layout, paint]);
+  }, [size, paint]);
 
   useEffect(() => subscribe(requestPaint), [requestPaint]);
 
+  // Trackpad/mouse wheel pans; pinch or Ctrl/⌘ + wheel zooms around the pointer.
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      if (e.ctrlKey || e.metaKey) {
+        zoomBy(Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0025) * (e.ctrlKey && !e.metaKey ? 4 : 1)), e.clientX - rect.left, e.clientY - rect.top);
+      } else {
+        const v = currentView();
+        const k = e.deltaMode === 1 ? 16 : 1;
+        setState({ view: { ...v, x: v.x - e.deltaX * k, y: v.y - e.deltaY * k } });
+      }
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, []);
+
   const toProject = (e: { clientX: number; clientY: number }): [number, number] => {
     const rect = canvasRef.current!.getBoundingClientRect();
-    return [(e.clientX - rect.left - layout!.ox) / layout!.scale, (e.clientY - rect.top - layout!.oy) / layout!.scale];
+    const v = currentView();
+    return [(e.clientX - rect.left - v.x) / v.scale, (e.clientY - rect.top - v.y) / v.scale];
   };
 
   const addPoint = (e: PointerEvent) => {
@@ -179,11 +228,13 @@ export function Canvas() {
     pts.push([Math.round(x * 100) / 100, Math.round(y * 100) / 100, pressure, t]);
   };
 
-  const strokeAt = (x: number, y: number): Stroke | undefined => {
+  /** Topmost visible stroke under the point, from any step on the canvas. */
+  const strokeAt = (x: number, y: number): { stroke: Stroke; step: number } | undefined => {
     const { project, current } = getState();
-    const strokes = project.steps[current].strokes;
-    for (let i = strokes.length - 1; i >= 0; i--) {
-      if (distanceToStroke(strokes[i], x, y) <= strokes[i].size / 2 + HIT_SLOP / layout!.scale) return strokes[i];
+    const all = paintOrder(editableStrokes(project, current), (e) => e.stroke);
+    const slop = HIT_SLOP / currentView().scale;
+    for (let i = all.length - 1; i >= 0; i--) {
+      if (distanceToStroke(all[i].stroke, x, y) <= all[i].stroke.size / 2 + slop) return all[i];
     }
   };
 
@@ -192,8 +243,9 @@ export function Canvas() {
     const { project, current, selection } = getState();
     const b = selectionBounds(project, current, selection);
     if (!b) return null;
-    const pad = SELECT_PAD / layout!.scale;
-    const reach = HANDLE_SIZE / layout!.scale;
+    const scale = currentView().scale;
+    const pad = SELECT_PAD / scale;
+    const reach = HANDLE_SIZE / scale;
     if (Math.abs(x - (b.x + b.width + pad)) <= reach && Math.abs(y - (b.y + b.height + pad)) <= reach) return 'handle';
     if (x >= b.x - pad && x <= b.x + b.width + pad && y >= b.y - pad && y <= b.y + b.height + pad) return 'inside';
     return null;
@@ -205,83 +257,103 @@ export function Canvas() {
     const hit = selectionHit(...p);
     if (hit === 'handle') {
       const b = selectionBounds(project, current, selection)!;
-      selectDrag.current = { kind: 'scale', anchor: [b.x, b.y], startDist: Math.max(1, Math.hypot(p[0] - b.x, p[1] - b.y)), base: project };
+      drag.current = { kind: 'scale', anchor: [b.x, b.y], startDist: Math.max(1, Math.hypot(p[0] - b.x, p[1] - b.y)), base: project };
       return;
     }
-    const stroke = strokeAt(...p);
-    if (stroke && e.shiftKey) {
+    const found = strokeAt(...p);
+    if (found && e.shiftKey) {
       const next = new Set(selection);
-      if (next.has(stroke.id)) next.delete(stroke.id);
-      else next.add(stroke.id);
+      if (next.has(found.stroke.id)) next.delete(found.stroke.id);
+      else next.add(found.stroke.id);
       actions.setSelection(next);
       return;
     }
-    if (stroke || hit === 'inside') {
-      if (stroke && !selection.has(stroke.id)) actions.setSelection([stroke.id]);
-      selectDrag.current = { kind: 'move', start: p, base: getState().project };
+    if (found || hit === 'inside') {
+      if (found && !selection.has(found.stroke.id)) actions.setSelection([found.stroke.id]);
+      drag.current = { kind: 'move', start: p, base: getState().project };
       return;
     }
     if (!e.shiftKey) actions.clearSelection();
-    selectDrag.current = { kind: 'marquee', start: p, end: p, additive: e.shiftKey };
+    drag.current = { kind: 'marquee', start: p, end: p, additive: e.shiftKey };
   };
 
-  const moveSelect = (p: [number, number]) => {
-    const drag = selectDrag.current!;
-    if (drag.kind === 'move') {
-      const dx = p[0] - drag.start[0], dy = p[1] - drag.start[1];
-      drag.map = (x, y) => [x + dx, y + dy];
-      actions.transformSelection(drag.base, drag.map, 1, false);
-    } else if (drag.kind === 'scale') {
-      const [ax, ay] = drag.anchor;
-      const k = Math.min(20, Math.max(0.05, Math.hypot(p[0] - ax, p[1] - ay) / drag.startDist));
-      drag.k = k;
-      actions.transformSelection(drag.base, (x, y) => [ax + (x - ax) * k, ay + (y - ay) * k], k, false);
+  const moveDrag = (e: React.PointerEvent, p: [number, number]) => {
+    const d = drag.current!;
+    if (d.kind === 'pan') {
+      setState({ view: { ...d.view, x: d.view.x + e.clientX - d.x, y: d.view.y + e.clientY - d.y } });
+    } else if (d.kind === 'move') {
+      const dx = p[0] - d.start[0], dy = p[1] - d.start[1];
+      d.map = (x, y) => [x + dx, y + dy];
+      actions.transformSelection(d.base, d.map, 1, false);
+    } else if (d.kind === 'scale') {
+      const [ax, ay] = d.anchor;
+      const k = Math.min(20, Math.max(0.05, Math.hypot(p[0] - ax, p[1] - ay) / d.startDist));
+      d.k = k;
+      actions.transformSelection(d.base, (x, y) => [ax + (x - ax) * k, ay + (y - ay) * k], k, false);
     } else {
-      drag.end = p;
+      d.end = p;
     }
   };
 
-  const endSelect = () => {
-    const drag = selectDrag.current!;
-    selectDrag.current = null;
-    if (drag.kind === 'move' && drag.map) actions.transformSelection(drag.base, drag.map, 1, true);
-    if (drag.kind === 'scale' && drag.k) {
-      const [ax, ay] = drag.anchor;
-      const k = drag.k;
-      actions.transformSelection(drag.base, (x, y) => [ax + (x - ax) * k, ay + (y - ay) * k], k, true);
+  const endDrag = () => {
+    const d = drag.current!;
+    drag.current = null;
+    if (d.kind === 'move' && d.map) actions.transformSelection(d.base, d.map, 1, true);
+    if (d.kind === 'scale' && d.k) {
+      const [ax, ay] = d.anchor;
+      const k = d.k;
+      actions.transformSelection(d.base, (x, y) => [ax + (x - ax) * k, ay + (y - ay) * k], k, true);
     }
-    if (drag.kind === 'marquee') {
-      const [x0, x1] = [Math.min(drag.start[0], drag.end[0]), Math.max(drag.start[0], drag.end[0])];
-      const [y0, y1] = [Math.min(drag.start[1], drag.end[1]), Math.max(drag.start[1], drag.end[1])];
+    if (d.kind === 'marquee') {
+      const [x0, x1] = [Math.min(d.start[0], d.end[0]), Math.max(d.start[0], d.end[0])];
+      const [y0, y1] = [Math.min(d.start[1], d.end[1]), Math.max(d.start[1], d.end[1])];
       if (x1 - x0 < 2 && y1 - y0 < 2) return;
       const { project, current, selection } = getState();
-      const inside = project.steps[current].strokes
-        .filter((s) => s.points.some(([x, y]) => x >= x0 && x <= x1 && y >= y0 && y <= y1))
-        .map((s) => s.id);
-      actions.setSelection(drag.additive ? [...selection, ...inside] : inside);
+      const inside = editableStrokes(project, current)
+        .filter(({ stroke }) => stroke.points.some(([x, y]) => x >= x0 && x <= x1 && y >= y0 && y <= y1))
+        .map(({ stroke }) => stroke.id);
+      actions.setSelection(d.additive ? [...selection, ...inside] : inside);
     }
   };
 
-  const updateSelectCursor = (p: [number, number]) => {
+  const updateCursor = (p: [number, number]) => {
     const canvas = canvasRef.current!;
-    const hit = selectionHit(...p);
-    const stroke = strokeAt(...p);
-    hoverStroke.current = stroke?.id ?? null;
-    canvas.style.cursor = hit === 'handle' ? 'nwse-resize' : hit === 'inside' || stroke ? 'move' : 'default';
+    const { tool, playhead } = getState();
+    if (drag.current?.kind === 'pan') {
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+    if (playhead !== null) canvas.style.cursor = 'default';
+    else if (tool === 'hand') canvas.style.cursor = 'grab';
+    else if (tool === 'pen') canvas.style.cursor = 'crosshair';
+    else if (tool === 'eraser') canvas.style.cursor = 'none';
+    else {
+      const hit = selectionHit(...p);
+      const found = strokeAt(...p);
+      hoverStroke.current = found ? { id: found.stroke.id, step: found.step } : null;
+      canvas.style.cursor = hit === 'handle' ? 'nwse-resize' : hit === 'inside' || found ? 'move' : 'default';
+    }
   };
 
   const eraseAt = (x: number, y: number) => {
     const { project, current } = getState();
-    for (const s of project.steps[current].strokes) {
-      if (distanceToStroke(s, x, y) <= ERASER_RADIUS + s.size / 2) erasing.current!.add(s.id);
+    for (const { stroke } of editableStrokes(project, current)) {
+      if (distanceToStroke(stroke, x, y) <= ERASER_RADIUS + stroke.size / 2) erasing.current!.add(stroke.id);
     }
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0 || !layout) return;
-    const { tool, color, gradient, size, brush } = getState();
-    actions.exitPreview();
+    const { tool, color, gradient, size: brushSize, brush } = getState();
+    const panning = e.button === 1 || (e.button === 0 && tool === 'hand');
+    if (!size || (e.button !== 0 && !panning)) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    if (panning) {
+      e.preventDefault();
+      drag.current = { kind: 'pan', x: e.clientX, y: e.clientY, view: currentView() };
+      updateCursor(toProject(e));
+      return;
+    }
+    actions.exitPreview();
     if (tool === 'select') {
       startSelect(e);
       requestPaint();
@@ -291,7 +363,7 @@ export function Canvas() {
     if (tool === 'pen') {
       draft.current = {
         start: e.timeStamp,
-        stroke: { id: uid(), color, ...(gradient && { gradient }), size, ...(brush !== 'marker' && { brush }), simulatePressure: e.pointerType !== 'pen', points: [] },
+        stroke: { id: uid(), color, ...(gradient && { gradient }), size: brushSize, ...(brush !== 'marker' && { brush }), simulatePressure: e.pointerType !== 'pen', points: [] },
       };
       draft.current.stroke.points.push([...toProject(e), e.pointerType === 'pen' ? e.pressure || 0.5 : 0.5, 0]);
     } else {
@@ -302,24 +374,22 @@ export function Canvas() {
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!layout) return;
+    if (!size) return;
     hover.current = toProject(e);
-    if (getState().tool !== 'select') canvasRef.current!.style.cursor = '';
-    if (selectDrag.current) {
-      moveSelect(hover.current);
-    } else if (getState().tool === 'select') {
-      updateSelectCursor(hover.current);
+    if (drag.current) {
+      moveDrag(e, hover.current);
     } else if (draft.current) {
       const events = e.nativeEvent.getCoalescedEvents?.() ?? [];
       for (const ev of events.length ? events : [e.nativeEvent]) addPoint(ev);
     } else if (erasing.current) {
       eraseAt(...hover.current);
     }
+    updateCursor(hover.current);
     requestPaint();
   };
 
   const onPointerUp = () => {
-    if (selectDrag.current) endSelect();
+    if (drag.current) endDrag();
     if (draft.current) {
       const { stroke } = draft.current;
       draft.current = null;
@@ -330,6 +400,7 @@ export function Canvas() {
       erasing.current = null;
       actions.eraseStrokes(ids);
     }
+    if (hover.current) updateCursor(hover.current);
     requestPaint();
   };
 
@@ -349,17 +420,17 @@ export function Canvas() {
   const onDrop = (e: React.DragEvent) => {
     const id = e.dataTransfer.getData(ASSET_DRAG_TYPE);
     const asset = getState().library.find((a) => a.id === id);
-    if (!asset || !layout) return;
+    if (!asset || !size) return;
     e.preventDefault();
     actions.insertAsset(asset, ...toProject(e));
   };
 
   return (
-    <div ref={wrapRef} className="absolute inset-0">
+    <div ref={wrapRef} className="relative h-full min-h-0 overflow-hidden bg-canvas">
       <canvas
         ref={canvasRef}
-        className={cx('block touch-none', previewing || tool === 'select' ? 'cursor-default' : tool === 'pen' ? 'cursor-crosshair' : 'cursor-none')}
-        style={layout ? { width: layout.width, height: layout.height } : undefined}
+        className={cx('block touch-none', tool === 'eraser' && !previewing && 'cursor-none')}
+        style={size ? { width: size.width, height: size.height } : undefined}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -367,7 +438,10 @@ export function Canvas() {
         onPointerLeave={onPointerLeave}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onAuxClick={(e) => e.preventDefault()}
       />
+      <CanvasHud />
+      <ZoomControls />
       {empty && !previewing && (
         <div className="pointer-events-none absolute top-1/2 left-1/2 w-[min(440px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 text-center leading-relaxed text-faint">
           <p className="mb-1 text-[22px] font-semibold tracking-tight text-muted">Draw something.</p>
@@ -381,7 +455,72 @@ export function Canvas() {
   );
 }
 
+/** Where you are: which scene and step you're drawing into, or that you're watching a preview. */
+function CanvasHud() {
+  const project = useEditor((s) => s.project);
+  const current = useEditor((s) => s.current);
+  const previewing = useEditor((s) => s.playhead !== null);
+  const playing = useEditor((s) => s.playing);
+  const step = project.steps[current];
+  const scene = project.steps.slice(0, sceneStart(project, current) + 1).filter((s, i) => i === 0 || s.newScene).length;
+
+  return (
+    <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-1.5 text-xs">
+      {previewing ? (
+        <span className="rounded-full bg-ink/85 px-2.5 py-1 font-medium text-white">
+          {playing ? 'Playing' : 'Preview'} <span className="ml-1 text-white/60">Esc to edit</span>
+        </span>
+      ) : (
+        <>
+          <span className="rounded-full bg-white px-2.5 py-1 text-muted shadow-island">
+            Scene {scene} <span className="text-faint">·</span> <span className="font-medium text-ink">Step {current + 1}</span>
+            <span className="text-faint"> of {project.steps.length}</span>
+          </span>
+          {step.label && <span className="max-w-64 truncate rounded-full bg-white px-2.5 py-1 shadow-island">{step.label}</span>}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ZoomControls() {
+  const scale = useEditor((s) => (s.view ?? fitView(s.project)).scale);
+  const fitted = useEditor((s) => s.view === null);
+  return (
+    <div className="absolute right-3 bottom-3 flex items-center rounded-lg bg-white p-0.5 shadow-island">
+      <IconButton size="sm" title="Zoom out (Ctrl/⌘ −)" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.25)}>
+        <MinusIcon />
+      </IconButton>
+      <button className="h-7 w-12 rounded-md text-xs tabular-nums hover:bg-hover" title="Zoom to 100% (Shift 0)" onClick={zoomToActual}>
+        {Math.round(scale * 100)}%
+      </button>
+      <IconButton size="sm" title="Zoom in (Ctrl/⌘ =)" aria-label="Zoom in" onClick={() => zoomBy(1.25)}>
+        <PlusIcon />
+      </IconButton>
+      <IconButton size="sm" active={fitted} title="Fit to screen (Shift 1)" aria-label="Fit to screen" onClick={zoomToFit}>
+        <FitIcon />
+      </IconButton>
+    </div>
+  );
+}
+
 function selectionBounds(project: Project, current: number, selection: ReadonlySet<string>): Bounds | null {
   if (!selection.size) return null;
-  return strokesBounds(project.steps[current].strokes.filter((s) => selection.has(s.id)));
+  return strokesBounds(editableStrokes(project, current).filter(({ stroke }) => selection.has(stroke.id)).map(({ stroke }) => stroke));
+}
+
+/** A small screen-sized label above a point, drawn in project coordinates. */
+function badge(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, px: number) {
+  ctx.save();
+  ctx.font = `600 ${11 * px}px Inter Variable, system-ui, sans-serif`;
+  const w = ctx.measureText(text).width + 12 * px;
+  const h = 18 * px;
+  ctx.fillStyle = '#5b5bd6';
+  ctx.beginPath();
+  ctx.roundRect(x, y - h, w, h, 4 * px);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x + 6 * px, y - h / 2);
+  ctx.restore();
 }

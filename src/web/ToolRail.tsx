@@ -3,68 +3,76 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { BRUSHES, BRUSH_STYLES, PALETTE, createRandom, shapeToStrokes, strokeOutlinePath, type BrushStyle } from '../core';
-import { EraserIcon, LibraryIcon, OnionIcon, PenIcon, RedoIcon, SelectIcon, UndoIcon } from './icons';
+import { EraserIcon, HandIcon, OnionIcon, PenIcon, SelectIcon } from './icons';
 import { PaintButton } from './ColorPicker';
 import { Slider } from './Slider';
-import { actions, setState, useEditor } from './store';
-import { Divider, IconButton, Island, Popover, cx } from './ui';
+import { actions, setState, useEditor, type Tool } from './store';
+import { IconButton, Popover, cx } from './ui';
 import { usePopover } from './usePopover';
 
 export const MIN_SIZE = 1;
 export const MAX_SIZE = 48;
 
-export function Toolbar() {
+/** The vertical tool rail: what you draw with, and with which color. */
+export function ToolRail() {
   const tool = useEditor((s) => s.tool);
   const color = useEditor((s) => s.color);
   const gradient = useEditor((s) => s.gradient);
   const onion = useEditor((s) => s.onion);
-  const libraryOpen = useEditor((s) => s.libraryOpen);
 
   return (
-    <Island className="absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-0.5 p-1 max-[1100px]:top-[60px]">
-      <IconButton active={tool === 'select'} aria-pressed={tool === 'select'} title="Select (V): click, Shift-click or drag a box; drag to move" onClick={() => setState({ tool: 'select' })}>
+    <nav className="relative z-20 flex w-[52px] flex-col items-center gap-1 border-r border-line bg-white py-2" aria-label="Tools">
+      <RailTool tool="select" current={tool} title="Select (V): click any stroke you can see, Shift-click or drag a box; drag to move">
         <SelectIcon />
-      </IconButton>
-      <IconButton active={tool === 'pen'} aria-pressed={tool === 'pen'} title="Pen (P)" onClick={() => setState({ tool: 'pen' })}>
+      </RailTool>
+      <RailTool tool="pen" current={tool} title="Pen (P): draws into the current step">
         <PenIcon />
-      </IconButton>
-      <IconButton active={tool === 'eraser'} aria-pressed={tool === 'eraser'} title="Eraser (E): erases strokes in the current step" onClick={() => setState({ tool: 'eraser' })}>
+      </RailTool>
+      <RailTool tool="eraser" current={tool} title="Eraser (E): erases any stroke you can see">
         <EraserIcon />
-      </IconButton>
-      <Divider />
-      {PALETTE.map((c, i) => (
-        <button
-          key={c}
-          className={cx(
-            'mx-0.5 size-[22px] shrink-0 rounded-full border-2 border-white transition duration-100 ease-snappy hover:scale-110',
-            color === c && !gradient ? 'ring-2 ring-accent' : 'ring-1 ring-black/10',
-          )}
-          style={{ background: c }}
-          aria-pressed={color === c && !gradient}
-          aria-label={`Color ${i + 1}`}
-          title={`Color (${i + 1})`}
-          onClick={() => actions.setColor(c)}
-        />
-      ))}
-      <PaintButton />
-      <Divider />
+      </RailTool>
+      <RailTool tool="hand" current={tool} title="Hand (H): drag to pan. Scroll pans too; pinch or Ctrl/⌘ scroll zooms">
+        <HandIcon />
+      </RailTool>
+      <RailDivider />
       <BrushPicker />
-      <Divider />
-      <IconButton title="Undo (Ctrl/⌘ Z)" aria-label="Undo" onClick={actions.undo}>
-        <UndoIcon />
-      </IconButton>
-      <IconButton title="Redo (Ctrl/⌘ Shift Z)" aria-label="Redo" onClick={actions.redo}>
-        <RedoIcon />
-      </IconButton>
+      <RailDivider />
+      <div className="grid grid-cols-2 place-items-center gap-1.5 py-0.5" role="radiogroup" aria-label="Color">
+        {PALETTE.map((c, i) => (
+          <button
+            key={c}
+            className={cx(
+              'size-[19px] shrink-0 rounded-full border-2 border-white transition duration-100 ease-snappy hover:scale-110',
+              color === c && !gradient ? 'ring-2 ring-accent' : 'ring-1 ring-black/10',
+            )}
+            style={{ background: c }}
+            role="radio"
+            aria-checked={color === c && !gradient}
+            aria-label={`Color ${i + 1}`}
+            title={`Color (${i + 1})`}
+            onClick={() => actions.setColor(c)}
+          />
+        ))}
+      </div>
+      <PaintButton side="right-end" />
+      <RailDivider />
       <IconButton active={onion} aria-pressed={onion} title="Onion skin (O): dim earlier steps, ghost the next one" onClick={() => setState({ onion: !onion })}>
         <OnionIcon />
       </IconButton>
-      <Divider />
-      <IconButton active={libraryOpen} aria-pressed={libraryOpen} title="Library of saved objects (I)" onClick={() => setState({ libraryOpen: !libraryOpen })}>
-        <LibraryIcon />
-      </IconButton>
-    </Island>
+    </nav>
   );
+}
+
+function RailTool({ tool, current, title, children }: { tool: Tool; current: Tool; title: string; children: React.ReactNode }) {
+  return (
+    <IconButton active={tool === current} aria-pressed={tool === current} title={title} onClick={() => setState({ tool })}>
+      {children}
+    </IconButton>
+  );
+}
+
+function RailDivider() {
+  return <span className="my-1 h-px w-6 shrink-0 bg-line" />;
 }
 
 /**
@@ -85,7 +93,7 @@ function BrushPicker() {
     <div className="relative" ref={ref}>
       <button
         className={cx(
-          'inline-flex h-[34px] min-w-14 items-center gap-2 rounded-lg px-2 transition-colors duration-100',
+          'flex h-[46px] w-[38px] flex-col items-center justify-center gap-0.5 rounded-lg transition-colors duration-100',
           open ? 'bg-accent-soft text-accent' : 'hover:bg-hover',
         )}
         aria-expanded={open}
@@ -96,10 +104,10 @@ function BrushPicker() {
         <span className="grid size-5 place-items-center">
           <span className="block rounded-full bg-current" style={{ width: dot, height: dot, opacity: BRUSHES[brush].opacity }} />
         </span>
-        <span className="min-w-5 text-left text-xs tabular-nums">{fmtSize(size)}</span>
+        <span className="text-[10.5px] leading-none tabular-nums">{fmtSize(size)}</span>
       </button>
       {open && (
-        <Popover className="left-1/2 w-[316px] -translate-x-1/2" role="dialog" aria-label="Brush">
+        <Popover side="right" className="w-[316px]" role="dialog" aria-label="Brush">
           <div className="grid grid-cols-5 gap-1 border-b border-line pb-3" role="radiogroup" aria-label="Brush style">
             {BRUSH_STYLES.map((b) => (
               <button

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 /** Join class names, skipping falsy values. */
 export function cx(...classes: (string | false | null | undefined)[]): string {
@@ -12,9 +12,84 @@ export function Island({ className, ...rest }: ComponentProps<'div'>) {
   return <div className={cx('rounded-xl bg-white shadow-island', className)} {...rest} />;
 }
 
-/** Floating panel anchored under its (relatively positioned) parent. */
-export function Popover({ className, ...rest }: ComponentProps<'div'>) {
-  return <div className={cx('absolute top-[calc(100%+8px)] z-20 rounded-xl bg-white p-3 shadow-pop animate-pop-in', className)} {...rest} />;
+/** Floating panel anchored to its (relatively positioned) parent: below it, or to its right. */
+export type PopoverSide = 'bottom' | 'right' | 'right-end';
+
+const POPOVER_SIDES: Record<PopoverSide, string> = {
+  bottom: 'top-[calc(100%+8px)]',
+  right: 'top-0 left-[calc(100%+10px)]',
+  /** To the right, bottom-aligned with the anchor: for anchors low on the screen. */
+  'right-end': 'bottom-0 left-[calc(100%+10px)]',
+};
+
+export function Popover({ className, side = 'bottom', ...rest }: ComponentProps<'div'> & { side?: PopoverSide }) {
+  return (
+    <div
+      className={cx('absolute z-30 rounded-xl bg-white p-3 shadow-pop animate-pop-in', POPOVER_SIDES[side], className)}
+      {...rest}
+    />
+  );
+}
+
+/** A titled group in a side panel. */
+export function Section({ title, aside, children, className }: { title: ReactNode; aside?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <section className={cx('border-b border-line px-4 pt-3 pb-4', className)}>
+      <div className="mb-2.5 flex min-h-6 items-center justify-between gap-2">
+        <h3 className="text-[11px] font-semibold tracking-wider text-muted uppercase">{title}</h3>
+        {aside}
+      </div>
+      <div className="flex flex-col gap-2.5">{children}</div>
+    </section>
+  );
+}
+
+/** Label on the left, control on the right. */
+export function Field({ label, children, hint, top }: { label: string; children: ReactNode; hint?: string; top?: boolean }) {
+  return (
+    <div className={cx('flex gap-3', top ? 'items-start' : 'items-center')} title={hint}>
+      <span className={cx('w-[72px] shrink-0 text-muted', top && 'leading-5')}>{label}</span>
+      <div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
+    </div>
+  );
+}
+
+export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      className={cx('relative h-[18px] w-8 shrink-0 rounded-full transition-colors disabled:opacity-40', checked ? 'bg-accent' : 'bg-[#d5d9df]')}
+      onClick={() => onChange(!checked)}
+    >
+      <span className={cx('absolute top-[2px] size-[14px] rounded-full bg-white shadow-sm transition-[left] duration-150 ease-snappy', checked ? 'left-4' : 'left-[2px]')} />
+    </button>
+  );
+}
+
+/** Plain text input styled for panels. Commits on Enter or blur; Escape reverts. */
+export function CommitInput({ value, onCommit, className, ...rest }: Omit<ComponentProps<'input'>, 'value' | 'onChange'> & { value: string; onCommit: (v: string) => void }) {
+  return (
+    <input
+      key={value}
+      defaultValue={value}
+      className={cx(
+        'h-8 min-w-0 rounded-lg border border-line bg-[#fafbfc] px-2.5 outline-none transition select-text placeholder:text-faint hover:border-[#d3d7dd] focus:border-accent focus:bg-white focus:ring-3 focus:ring-accent/15',
+        className,
+      )}
+      onBlur={(e) => onCommit(e.currentTarget.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+        if (e.key === 'Escape') {
+          e.currentTarget.value = value;
+          e.currentTarget.blur();
+        }
+      }}
+      {...rest}
+    />
+  );
 }
 
 interface ButtonProps extends ComponentProps<'button'> {

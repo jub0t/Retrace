@@ -36,13 +36,13 @@ That is the actual animated SVG export: no video and no script. It's one self-pl
 ## Highlights
 
 - ✍️ **Real strokes.** Path, pressure and timing are recorded, then replayed at the speed of the hand.
-- 🪜 **Steps.** Each step adds to the drawing, with its own hold time and label.
+- 🪜 **Steps and scenes.** Each step adds to the drawing, with its own hold time and label. A new scene starts on a clean canvas.
 - 🖌️ **Brushes, color, lettering.** Five brushes, solid and gradient color, a single-stroke handwriting font, and posable stick figures.
 - ♻️ **Reusable objects.** Select strokes, save them to your library, and drop them into any drawing.
-- 🎞️ **Timeline.** Frame-accurate scrubbing, loop, onion skin and step thumbnails.
+- 🎞️ **Timeline.** Steps as blocks on a time ruler, with previews. Drag to reorder, drag an edge to change the hold.
 - 🤖 **MCP built in.** Agents draw, preview their own work and export.
 - 📤 **Export.** MP4/WebM, transparent video and self-playing animated SVG.
-- 🔒 **Local.** Runs in your browser and works offline. Projects are plain JSON.
+- 🔒 **Local.** Runs in your browser and works offline. Every project autosaves in the browser, and files are plain JSON.
 
 ## Get started
 

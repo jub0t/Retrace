@@ -19,6 +19,25 @@ export type Shape = ShapeStyle &
     | { type: 'polyline'; points: Vec[]; closed?: boolean }
     | { type: 'curve'; points: Vec[]; closed?: boolean }
     | { type: 'ellipse'; center: Vec; rx: number; ry?: number }
+    | {
+        type: 'arc';
+        center: Vec;
+        rx: number;
+        ry?: number;
+        /** Degrees; 0 points right and angles turn clockwise (screen y points down). */
+        from: number;
+        to: number;
+      }
+    | {
+        type: 'wave';
+        /** The wave runs along the line from `from` to `to`, wiggling to either side of it. */
+        from: Vec;
+        to: Vec;
+        amplitude: number;
+        wavelength: number;
+        /** Degrees; 180 flips the wave upside down. */
+        phase?: number;
+      }
     | { type: 'rect'; x: number; y: number; width: number; height: number }
     | {
         type: 'text';
@@ -48,9 +67,13 @@ export interface ShapeStyle {
   gradient?: Gradient;
   size?: number;
   brush?: BrushStyle;
+  /** Fill closed shapes (ellipse, rect, closed polyline/curve) with an opaque color. */
+  fill?: string;
+  /** Stacking order: higher layers paint on top of lower ones, whenever they're drawn. */
+  layer?: number;
 }
 
-export const POSES = ['stand', 'wave', 'cheer', 'point', 'think', 'shrug'] as const;
+export const POSES = ['stand', 'wave', 'cheer', 'point', 'think', 'shrug', 'sit'] as const;
 export const FACES = ['happy', 'neutral', 'sad', 'surprised', 'none'] as const;
 export const HAIRS = ['none', 'messy', 'spiky', 'long'] as const;
 export type Pose = (typeof POSES)[number];
@@ -77,7 +100,8 @@ export function shapeToStrokes(shape: Shape, ctx: DrawContext): Stroke[] {
   const brush = shape.brush ?? ctx.brush;
   const gradient = shape.gradient ?? (shape.color ? undefined : ctx.gradient);
   const wobble = ctx.wobble ?? 1;
-  const strokes = penPaths(shape, ctx.rand, wobble).map((segments) => ({
+  const fill = shape.fill && isClosed(shape) ? shape.fill : undefined;
+  const strokes = penPaths(shape, ctx.rand, wobble).map((segments, i) => ({
     id: uid(),
     color,
     size,
@@ -85,8 +109,35 @@ export function shapeToStrokes(shape: Shape, ctx: DrawContext): Stroke[] {
     ...(gradient ? { gradient, color: gradient.stops[0]?.color ?? color } : {}),
     simulatePressure: true,
     points: humanizePath(segments, { rand: ctx.rand, wobble, speed: ctx.speed }),
+    ...(fill && i === 0 ? { fill } : {}),
+    ...(shape.layer ? { layer: shape.layer } : {}),
   }));
   return gradient ? shareGradientBox(strokes) : strokes;
+}
+
+function isClosed(shape: Shape): boolean {
+  return shape.type === 'ellipse' || shape.type === 'rect' || ((shape.type === 'polyline' || shape.type === 'curve') && !!shape.closed);
+}
+
+/** The same shape moved by (dx, dy): for repeating a shape in a row or grid. */
+export function translateShape(shape: Shape, dx: number, dy: number): Shape {
+  const m = (p: Vec): Vec => [p[0] + dx, p[1] + dy];
+  switch (shape.type) {
+    case 'line':
+    case 'arrow':
+    case 'wave':
+      return { ...shape, from: m(shape.from), to: m(shape.to) };
+    case 'polyline':
+    case 'curve':
+      return { ...shape, points: shape.points.map(m) };
+    case 'ellipse':
+    case 'arc':
+      return { ...shape, center: m(shape.center) };
+    case 'rect':
+    case 'text':
+    case 'stick_figure':
+      return { ...shape, x: shape.x + dx, y: shape.y + dy };
+  }
 }
 
 function penPaths(shape: Shape, rand: () => number, wobble: number): PenPath[] {
@@ -122,6 +173,35 @@ function penPaths(shape: Shape, rand: () => number, wobble: number): PenPath[] {
 
     case 'ellipse':
       return [[ellipsePath(shape.center, shape.rx, shape.ry ?? shape.rx, rand, wobble)]];
+
+    case 'arc': {
+      const ry = shape.ry ?? shape.rx;
+      const a0 = (shape.from * Math.PI) / 180, a1 = (shape.to * Math.PI) / 180;
+      const n = Math.max(8, Math.ceil((Math.max(shape.rx, ry) * Math.abs(a1 - a0)) / 6));
+      const pts: Vec[] = [];
+      for (let i = 0; i <= n; i++) {
+        const a = a0 + ((a1 - a0) * i) / n;
+        pts.push([shape.center[0] + Math.cos(a) * shape.rx, shape.center[1] + Math.sin(a) * ry]);
+      }
+      return [[pts]];
+    }
+
+    case 'wave': {
+      const [x0, y0] = shape.from, [x1, y1] = shape.to;
+      const len = Math.hypot(x1 - x0, y1 - y0) || 1;
+      // Unit vectors along the line and perpendicular to it ("up" for a left-to-right wave).
+      const ux = (x1 - x0) / len, uy = (y1 - y0) / len;
+      const nx = uy, ny = -ux;
+      const phase = ((shape.phase ?? 0) * Math.PI) / 180;
+      const n = Math.max(8, Math.ceil((len / Math.max(1, shape.wavelength)) * 16));
+      const pts: Vec[] = [];
+      for (let i = 0; i <= n; i++) {
+        const s = (len * i) / n;
+        const off = shape.amplitude * Math.sin((2 * Math.PI * s) / shape.wavelength + phase);
+        pts.push([x0 + ux * s + nx * off, y0 + uy * s + ny * off]);
+      }
+      return [[pts]];
+    }
 
     case 'rect': {
       const { x, y, width: w, height: h } = shape;
@@ -167,12 +247,13 @@ function ellipsePath(center: Vec, rx: number, ry: number, rand: () => number, wo
   // Start near the top and go counter-clockwise (how most people draw circles),
   // overshooting past the start with a slight spiral so the ends don't line up exactly.
   const start = -Math.PI / 2 - 0.3 - rand() * 0.6;
-  // Overshoot by roughly a fixed arc length (~40-70px), not a fixed angle, so big circles
+  // Overshoot by a short, fixed arc length (~25-40px), not a fixed angle, so big circles
   // don't end in a long doubled-up stretch where the slow start and slow finish overlap.
-  const overshoot = clamp(55 / ((rx + ry) / 2), 0.1, 0.55) * (0.75 + rand() * 0.5);
+  const overshoot = clamp(32 / ((rx + ry) / 2), 0.06, 0.5) * (0.8 + rand() * 0.4);
   const sweep = Math.PI * 2 + overshoot;
-  // The closing pass spirals in or out a little so it sits beside the start, not on it.
-  const drift = (rand() < 0.5 ? -1 : 1) * (0.018 + rand() * 0.022) * wobble;
+  // The closing pass drifts in or out by a couple of pixels: enough to read as hand-drawn,
+  // little enough that the overlap merges into one line instead of a doubled seam.
+  const drift = ((rand() < 0.5 ? -1 : 1) * (1 + rand() * 1.5) * wobble) / Math.max(rx, ry, 1);
   const squash = rand() * Math.PI;
   const n = Math.max(24, Math.ceil((Math.max(rx, ry) * sweep) / 6));
   const pts: Vec[] = [];
@@ -210,11 +291,17 @@ function stickFigure(shape: Extract<Shape, { type: 'stick_figure' }>, rand: () =
   const dir = shape.facing === 'left' ? -1 : 1;
   const pose = shape.pose ?? 'stand';
   const headR = H * 0.11;
-  const head: Vec = [x, y - H + headR];
-  const neck: Vec = [x, y - H + headR * 2];
-  const shoulder: Vec = [x, neck[1] + H * 0.07];
-  const hip: Vec = [x + (rand() - 0.5) * H * 0.02, y - H * 0.42];
-  const at = (dx: number, dy: number): Vec => [x + dx * H, shoulder[1] + dy * H];
+  // Sitting lowers the body by the length of the thighs (now horizontal) and sets the
+  // torso back a little so the knees end up near x.
+  const sitting = pose === 'sit';
+  const drop = sitting ? H * 0.15 : 0;
+  const bx = sitting ? x - dir * H * 0.08 : x;
+  const head: Vec = [bx, y - H + headR + drop];
+  const neck: Vec = [bx, y - H + headR * 2 + drop];
+  const shoulder: Vec = [bx, neck[1] + H * 0.07];
+  const hip: Vec = [bx + (rand() - 0.5) * H * 0.02, y - H * 0.42 + drop];
+  const at = (dx: number, dy: number): Vec => [bx + dx * H, shoulder[1] + dy * H];
+  const knee: Vec = [hip[0] + dir * H * 0.2, hip[1] + H * 0.01];
 
   const armDown = (side: number): Vec[] => [shoulder, at(side * 0.16, 0.27)];
   const arms: Record<Pose, [Vec[], Vec[]]> = {
@@ -230,7 +317,22 @@ function stickFigure(shape: Extract<Shape, { type: 'stick_figure' }>, rand: () =
       [shoulder, at(-0.15, 0.1), at(-0.23, -0.04)],
       [shoulder, at(0.15, 0.1), at(0.23, -0.04)],
     ],
+    // Hands resting on the knees.
+    sit: [
+      [shoulder, at(dir * 0.06, 0.16), [knee[0] - dir * H * 0.05, knee[1] - H * 0.03]],
+      [shoulder, at(dir * 0.09, 0.15), [knee[0] - dir * H * 0.01, knee[1] - H * 0.02]],
+    ],
   };
+  // Seated legs run forward to the knee, then down to the floor.
+  const legs: Vec[][] = sitting
+    ? [
+        [hip, knee, [knee[0] + dir * H * 0.02, y]],
+        [hip, [knee[0] - dir * H * 0.03, knee[1] + H * 0.02], [knee[0] - dir * H * 0.06, y]],
+      ]
+    : [
+        [hip, [x - H * 0.13, y]],
+        [hip, [x + H * 0.13, y]],
+      ];
 
   const paths: PenPath[] = [
     [ellipsePath(head, headR, headR * 1.05, rand, 0.6)],
@@ -238,8 +340,8 @@ function stickFigure(shape: Extract<Shape, { type: 'stick_figure' }>, rand: () =
     [[neck, hip]],
     pairs(arms[pose][0]),
     pairs(arms[pose][1]),
-    [[hip, [x - H * 0.13, y]]],
-    [[hip, [x + H * 0.13, y]]],
+    pairs(legs[0]),
+    pairs(legs[1]),
   ];
 
   const face = shape.face ?? 'happy';

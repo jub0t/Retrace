@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
-import { strokeDuration, type Project, type Stroke } from './model';
+import { stepRate, strokeDuration, type Project, type Stroke } from './model';
 
 /** Frame rate for scrubbing and video export. */
 export const FPS = 60;
@@ -9,7 +9,7 @@ export const FRAME_MS = 1000 / FPS;
 
 /**
  * Pen-lift pause between consecutive strokes inside one step, at 1× speed (it scales with
- * project speed like the strokes do). Real gaps (thinking time) are dropped.
+ * the step's rate like the strokes do). Real gaps (thinking time) are dropped.
  */
 export const STROKE_GAP = 120;
 
@@ -18,13 +18,16 @@ export interface TimedStroke {
   step: number;
   /** Playback time (ms) when this stroke starts drawing. */
   start: number;
-  /** Playback duration (ms), i.e. recorded duration divided by project speed. */
+  /** Playback duration (ms), i.e. recorded duration divided by the step's rate. */
   duration: number;
+  /** Recorded ms per playback ms: project speed times the step's speed. */
+  rate: number;
+  /** Playback time (ms) when a later scene wipes this stroke away; Infinity if never. */
+  end: number;
 }
 
 export interface Timeline {
   duration: number;
-  speed: number;
   strokes: TimedStroke[];
   /** Playback time at which each step begins. */
   stepStarts: number[];
@@ -40,18 +43,24 @@ export function getTimeline(project: Project): Timeline {
   const strokes: TimedStroke[] = [];
   const stepStarts: number[] = [];
   let t = 0;
+  let scene = 0;
   project.steps.forEach((step, i) => {
+    if (step.newScene && i > 0) {
+      for (const s of strokes.slice(scene)) s.end = t;
+      scene = strokes.length;
+    }
     stepStarts.push(t);
+    const rate = stepRate(project, step);
     step.strokes.forEach((stroke, j) => {
-      if (j > 0) t += STROKE_GAP / project.speed;
-      const duration = strokeDuration(stroke) / project.speed;
-      strokes.push({ stroke, step: i, start: t, duration });
+      if (j > 0) t += STROKE_GAP / rate;
+      const duration = strokeDuration(stroke) / rate;
+      strokes.push({ stroke, step: i, start: t, duration, rate, end: Infinity });
       t += duration;
     });
     t += step.hold;
   });
 
-  const timeline = { duration: t, speed: project.speed, strokes, stepStarts };
+  const timeline = { duration: t, strokes, stepStarts };
   cache.set(project, timeline);
   return timeline;
 }
@@ -73,6 +82,7 @@ export function stepAt(timeline: Timeline, time: number): number {
 export function* visibleStrokes(timeline: Timeline, time: number): Generator<{ stroke: Stroke; elapsed: number }> {
   for (const s of timeline.strokes) {
     if (s.start > time) return;
-    yield { stroke: s.stroke, elapsed: (time - s.start) * timeline.speed };
+    if (time >= s.end) continue;
+    yield { stroke: s.stroke, elapsed: (time - s.start) * s.rate };
   }
 }
