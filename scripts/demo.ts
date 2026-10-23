@@ -25,7 +25,6 @@ const GRAY = '#868e96';
 const RED = '#e03131';
 const YELLOW = '#f59f00';
 const BLUE = '#1c7ed6';
-const ACCENT = '#5b5bd6';
 
 /** Binary digits, hand-lettered. */
 function binary(bits: string, x: number, y: number, h: number): Shape {
@@ -164,13 +163,13 @@ function specimen(): Project {
   return project;
 }
 
-/** The mark: a hand-drawn play button over a scribble, drawn by the humanizer itself. */
-function logo(ink: string): Project {
+/** The mark: a hand-drawn play button over a scribble, drawn by the humanizer itself. The accents match the app's two themes. */
+function logo(ink: string, accent: string): Project {
   const project = createProject({ width: 256, height: 256 });
   const rand = createRandom(7);
   project.steps[0].strokes = (
     [
-      { type: 'polyline', points: [[92, 60], [92, 170], [186, 115]], closed: true, color: ACCENT, size: 14 },
+      { type: 'polyline', points: [[92, 60], [92, 170], [186, 115]], closed: true, color: accent, size: 14 },
       { type: 'curve', points: [[40, 214], [90, 196], [140, 222], [216, 200]], color: ink, size: 11 },
     ] as Shape[]
   ).flatMap((shape) => shapeToStrokes(shape, { rand, wobble: 0.8 }));
@@ -183,6 +182,6 @@ const demo = scene();
 writeFileSync('assets/demo.retrace.json', JSON.stringify(demo));
 writeFileSync('assets/demo.svg', renderAnimatedSvg(demo, { tail: 0 }));
 writeFileSync('assets/thumbnail.svg', renderSvg(demo));
-writeFileSync('assets/logo-light.svg', renderSvg(logo(INK), { transparent: true }));
-writeFileSync('assets/logo-dark.svg', renderSvg(logo('#f1f3f5'), { transparent: true }));
+writeFileSync('assets/logo-light.svg', renderSvg(logo(INK, '#4d7c0f'), { transparent: true }));
+writeFileSync('assets/logo-dark.svg', renderSvg(logo('#f1f3f5', '#cbf53f'), { transparent: true }));
 console.log('wrote assets/: specimen.retrace.json, demo.retrace.json, demo.svg, thumbnail.svg, logo-light.svg, logo-dark.svg');

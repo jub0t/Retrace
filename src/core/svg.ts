@@ -4,8 +4,8 @@
 import { brushOf } from './brushes';
 import { strokeFillPath, strokeOutlinePath } from './geometry';
 import { svgPaint } from './paint';
-import { paintOrder, sceneStart, type Project, type Stroke } from './model';
-import { getTimeline } from './timeline';
+import { paintOrder, strokeZ, trackIndex, type Project, type Stroke } from './model';
+import { getTimeline, stepsShownWhileEditing } from './timeline';
 
 export interface SvgOptions {
   /** Last step to include (inclusive). Defaults to the final step. */
@@ -17,7 +17,11 @@ export interface SvgOptions {
 export function renderSvg(project: Project, opts: SvgOptions = {}): string {
   const upto = opts.uptoStep ?? project.steps.length - 1;
   const defs: string[] = [];
-  const strokes = paintOrder(project.steps.slice(sceneStart(project, upto), upto + 1).flatMap((step) => step.strokes), (s) => s);
+  const shown = stepsShownWhileEditing(project, upto).flatMap((i) => {
+    const track = trackIndex(project, project.steps[i]);
+    return project.steps[i].strokes.map((stroke) => ({ stroke, z: strokeZ(track, stroke) }));
+  });
+  const strokes = paintOrder(shown, (e) => e.z).map((e) => e.stroke);
   const paths = strokes.map((s, i) => {
     const paint = svgPaint(s, `p${i}`);
     if (paint.def) defs.push(paint.def);
@@ -47,7 +51,7 @@ export function renderAnimatedSvg(project: Project, opts: AnimatedSvgOptions = {
 
   const defs: string[] = [];
   const paths: string[] = [];
-  paintOrder(timeline.strokes.map((t, i) => ({ ...t, i })), (t) => t.stroke).forEach(({ stroke, start, duration, end, i }) => {
+  paintOrder(timeline.strokes.map((t, i) => ({ ...t, i })), (t) => t.z).forEach(({ stroke, start, duration, end, i }) => {
     const { centerline, lengths } = measure(stroke);
     const L = lengths[lengths.length - 1];
     const w = stroke.size * 1.6;

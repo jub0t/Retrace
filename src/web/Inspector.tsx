@@ -2,13 +2,13 @@
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
 import { useEffect, useRef, useState } from 'react';
-import { PALETTE, getTimeline, sceneStart, stepEndTime } from '../core';
+import { PALETTE, getTimeline, sceneOf, scenesOf, stepEndTime, stepNumber, trackIndex, tracksOf } from '../core';
 import { CloseIcon, CopyIcon, DuplicateIcon, LeftIcon, RightIcon, SaveObjectIcon, TrashIcon } from './icons';
 import { ColorEditor } from './ColorPicker';
 import { LibraryPanel } from './LibraryPanel';
 import { Slider } from './Slider';
 import { actions, getState, setState, useEditor } from './store';
-import { CommitInput, Field, IconButton, Section, Switch, TextButton, cx } from './ui';
+import { CommitInput, Field, IconButton, PrimaryButton, Section, Stats, TextButton, cx } from './ui';
 
 export const CANVAS_PRESETS = [
   { label: '16:9 landscape', width: 1920, height: 1080 },
@@ -32,14 +32,14 @@ export function Inspector() {
   const panel = useEditor((s) => s.panel);
   const libraryCount = useEditor((s) => s.library.length);
   return (
-    <aside className="flex w-[280px] min-h-0 flex-col border-l border-line bg-panel max-[1000px]:w-[248px]">
-      <div className="flex h-10 shrink-0 items-end gap-4 border-b border-line px-3.5" role="tablist">
+    <aside className="flex w-[300px] min-h-0 flex-col border-l border-line bg-panel max-[1000px]:w-[264px]">
+      <div className="flex h-12 shrink-0 items-end gap-5 border-b border-line px-4" role="tablist">
         {(['properties', 'library'] as const).map((tab) => (
           <button
             key={tab}
             role="tab"
             aria-selected={panel === tab}
-            className={cx('-mb-px h-9 border-b-2 font-medium capitalize transition-colors', panel === tab ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink')}
+            className={cx('-mb-px h-11 border-b-2 font-medium capitalize transition-colors', panel === tab ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink')}
             onClick={() => setState({ panel: tab })}
             title={tab === 'library' ? 'Saved objects (I)' : undefined}
           >
@@ -95,10 +95,10 @@ function SelectionSection() {
 
   return (
     <Section
-      className="bg-accent-soft/30"
+      className="bg-accent-soft/40"
       title={
-        <span className="text-accent">
-          Selection <span className="ml-1 font-normal tracking-normal normal-case tabular-nums">{count} stroke{count === 1 ? '' : 's'}</span>
+        <span>
+          Selection <span className="ml-1 font-normal text-muted tabular-nums">{count}</span>
         </span>
       }
       aside={
@@ -107,19 +107,11 @@ function SelectionSection() {
         </IconButton>
       }
     >
-      <p className="text-xs text-muted">
-        Drawn in step{stepList.length === 1 ? '' : 's'} {stepList.map((i) => i + 1).join(', ')}
-        {elsewhere && (
-          <button className="ml-1.5 font-medium text-accent hover:underline" onClick={actions.moveSelectionToCurrentStep} title="Move these strokes into the step you're editing, so they draw then">
-            Move to step {current + 1}
-          </button>
-        )}
-      </p>
       <Field label="Recolor">
         {PALETTE.map((c) => (
           <button
             key={c}
-            className={cx('size-5 rounded-full border-2 border-panel', color === c ? 'ring-2 ring-accent' : 'ring-1 ring-white/15')}
+            className={cx('size-6 rounded-full border-2 border-panel transition-transform hover:scale-110', color === c ? 'ring-2 ring-accent' : 'ring-1 ring-line-strong')}
             style={{ background: c }}
             aria-label={`Recolor to ${c}`}
             onClick={() => actions.setColor(c)}
@@ -136,7 +128,7 @@ function SelectionSection() {
         >
           <input
             ref={inputRef}
-            className="h-7 min-w-0 flex-1 rounded-ctl bg-field px-2 outline-none select-text focus:ring-1 focus:ring-accent"
+            className="h-8 min-w-0 flex-1 rounded-ctl bg-field px-2.5 outline-none select-text focus:ring-1 focus:ring-accent"
             value={name}
             aria-label="Object name"
             onChange={(e) => setName(e.target.value)}
@@ -147,12 +139,10 @@ function SelectionSection() {
               }
             }}
           />
-          <button type="submit" className="h-7 rounded-ctl bg-ink px-3 font-medium text-on-ink hover:bg-white">
-            Save
-          </button>
+          <PrimaryButton type="submit">Save</PrimaryButton>
         </form>
       ) : (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <TextButton
             className="flex-1 bg-field font-medium"
             title="Save to your library to reuse in any project"
@@ -172,6 +162,15 @@ function SelectionSection() {
           </IconButton>
         </div>
       )}
+      {elsewhere && (
+        <TextButton
+          className="bg-field text-muted"
+          title={`Drawn in step${stepList.length === 1 ? '' : 's'} ${stepList.map((i) => i + 1).join(', ')}. Moves them into this step, so they draw then.`}
+          onClick={actions.moveSelectionToCurrentStep}
+        >
+          Move into step {current + 1}
+        </TextButton>
+      )}
     </Section>
   );
 }
@@ -183,14 +182,18 @@ function StepSection() {
   const timeline = getTimeline(project);
   const start = timeline.stepStarts[current];
   const drawing = stepEndTime(project, current) - start;
-  const first = sceneStart(project, current);
-  let last = current;
-  while (last + 1 < project.steps.length && !project.steps[last + 1].newScene) last++;
-  const sceneNumber = project.steps.slice(0, first + 1).filter((s, i) => i === 0 || s.newScene).length;
+  const scene = sceneOf(project, current);
+  const sceneStart = timeline.scenes[scene.index].start;
+  const tracks = tracksOf(project);
+  const track = tracks[trackIndex(project, step)];
 
   return (
     <Section
-      title={`Step ${current + 1} of ${project.steps.length}`}
+      title={
+        <span>
+          Step {stepNumber(project, current)} <span className="font-normal text-faint">of {scene.last - scene.first + 1}</span>
+        </span>
+      }
       aside={
         <span className="flex gap-0.5">
           <IconButton size="sm" title="Previous step (←)" aria-label="Previous step" disabled={current === 0} onClick={() => actions.selectStep(current - 1)}>
@@ -203,7 +206,7 @@ function StepSection() {
       }
     >
       <CommitInput key={step.id} value={step.label ?? ''} placeholder="Name this step…" aria-label="Step name" onCommit={(v) => actions.setLabel(v)} />
-      <Field label="Hold" hint="Pause after this step finishes drawing">
+      <Field label="Hold" hint="Pause after this step draws">
         <Slider
           label="Hold after step"
           value={step.hold}
@@ -218,9 +221,9 @@ function StepSection() {
           onChange={(v) => actions.setHold(v, false)}
           onCommit={(v) => actions.setHold(v, true)}
         />
-        <span className="w-10 shrink-0 text-right tabular-nums">{formatSeconds(step.hold)}</span>
+        <span className="w-11 shrink-0 text-right tabular-nums">{formatSeconds(step.hold)}</span>
       </Field>
-      <Field label="Speed" hint="Playback speed for this step, on top of the project's hand speed. Speed up captions, slow down a reveal.">
+      <Field label="Speed" hint="This step's speed, on top of the project's hand speed">
         <Slider
           label="Step speed"
           value={step.speed ?? 1}
@@ -235,28 +238,36 @@ function StepSection() {
           onChange={(v) => actions.setStepSpeed(v, false)}
           onCommit={(v) => actions.setStepSpeed(v, true)}
         />
-        <span className="w-10 shrink-0 text-right tabular-nums">{(step.speed ?? 1).toFixed(step.speed && step.speed < 1 ? 2 : 1)}×</span>
+        <span className="w-11 shrink-0 text-right tabular-nums">{(step.speed ?? 1).toFixed(step.speed && step.speed < 1 ? 2 : 1)}×</span>
       </Field>
-      <Field label="New scene" hint="Wipe the canvas before this step draws">
-        <Switch label="Starts a new scene" checked={!!step.newScene && current > 0} disabled={current === 0} onChange={actions.setNewScene} />
-        <span className="text-xs text-faint">{current === 0 ? 'First step' : step.newScene ? 'Canvas wipes first' : 'Draws on top'}</span>
-      </Field>
-      <p className="pt-1 text-[11px] leading-relaxed text-muted">
-        {step.strokes.length} stroke{step.strokes.length === 1 ? '' : 's'}, drawn in {formatSeconds(drawing)}, starting at {formatClock(start)}.
-        <br />
-        Scene {sceneNumber} {first === last ? `is step ${first + 1}` : `spans steps ${first + 1} to ${last + 1}`}.
-      </p>
-      <div className="flex gap-1">
+      {tracks.length > 1 && (
+        <Field label="Track">
+          <select
+            className="h-8 min-w-0 flex-1 rounded-ctl bg-field px-2 outline-none hover:bg-field-hover focus:ring-1 focus:ring-accent"
+            value={track.id}
+            aria-label="Track"
+            onChange={(e) => actions.placeStep(current, e.target.value, start - sceneStart)}
+          >
+            {[...tracks].reverse().map((t) => (
+              <option key={t.id} value={t.id} disabled={t.locked && t.id !== track.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+      <Stats
+        items={[
+          ['Strokes', step.strokes.length],
+          ['Draws', formatSeconds(drawing)],
+          ['Starts', formatClock(start - sceneStart)],
+        ]}
+      />
+      <div className="flex gap-1.5">
         <TextButton className="flex-1 bg-field" title="Duplicate step" onClick={actions.duplicateStep}>
           <DuplicateIcon />
           Duplicate
         </TextButton>
-        <IconButton title="Move step earlier ([)" aria-label="Move step earlier" disabled={current === 0} onClick={() => actions.moveStep(-1)}>
-          <LeftIcon />
-        </IconButton>
-        <IconButton title="Move step later (])" aria-label="Move step later" disabled={current === project.steps.length - 1} onClick={() => actions.moveStep(1)}>
-          <RightIcon />
-        </IconButton>
         <IconButton tone="danger" title="Delete step (Shift ⌫)" aria-label="Delete step" onClick={() => actions.deleteStep()}>
           <TrashIcon />
         </IconButton>
@@ -268,14 +279,14 @@ function StepSection() {
 function ProjectSection() {
   const project = useEditor((s) => s.project);
   const { duration } = getTimeline(project);
-  const scenes = project.steps.filter((s, i) => i === 0 || s.newScene).length;
+  const scenes = scenesOf(project).length;
   const preset = CANVAS_PRESETS.find((p) => p.width === project.width && p.height === project.height);
 
   return (
     <Section title="Project" className="border-b-0">
       <Field label="Canvas">
         <select
-          className="h-7 min-w-0 flex-1 rounded-ctl bg-field px-2 outline-none hover:bg-field-hover focus:ring-1 focus:ring-accent"
+          className="h-8 min-w-0 flex-1 rounded-ctl bg-field px-2 outline-none hover:bg-field-hover focus:ring-1 focus:ring-accent"
           value={preset ? `${preset.width}x${preset.height}` : 'custom'}
           aria-label="Canvas size"
           onChange={(e) => {
@@ -294,7 +305,7 @@ function ProjectSection() {
       <Field label="Paper" top>
         <PaperPicker />
       </Field>
-      <Field label="Hand speed" hint="How fast every stroke is redrawn, across the whole project">
+      <Field label="Hand speed" hint="How fast every stroke is redrawn">
         <Slider
           label="Drawing speed"
           value={project.speed}
@@ -309,11 +320,15 @@ function ProjectSection() {
           onChange={(v) => actions.setSpeed(v, false)}
           onCommit={(v) => actions.setSpeed(v, true)}
         />
-        <span className="w-10 shrink-0 text-right tabular-nums">{project.speed.toFixed(2)}×</span>
+        <span className="w-11 shrink-0 text-right tabular-nums">{project.speed.toFixed(2)}×</span>
       </Field>
-      <p className="pt-1 text-[11px] text-muted">
-        {formatClock(duration)} long, {scenes} scene{scenes === 1 ? '' : 's'}, {project.steps.length} step{project.steps.length === 1 ? '' : 's'}.
-      </p>
+      <Stats
+        items={[
+          ['Length', formatClock(duration)],
+          ['Scenes', scenes],
+          ['Steps', project.steps.length],
+        ]}
+      />
     </Section>
   );
 }
@@ -326,11 +341,11 @@ function PaperPicker() {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
         {BACKGROUNDS.map((b) => (
           <button
             key={b.color}
-            className={cx('size-5 shrink-0 rounded-ctl', background.toLowerCase() === b.color ? 'ring-2 ring-accent ring-offset-1 ring-offset-panel' : 'ring-1 ring-white/20')}
+            className={cx('size-6 shrink-0 rounded-full', background.toLowerCase() === b.color ? 'ring-2 ring-accent ring-offset-2 ring-offset-panel' : 'ring-1 ring-line-strong')}
             style={{ background: b.color }}
             title={b.name}
             aria-label={`${b.name} paper`}
@@ -338,14 +353,14 @@ function PaperPicker() {
           />
         ))}
         <button
-          className={cx('grid size-5 shrink-0 place-items-center rounded-ctl p-[2px]', custom || open ? 'ring-2 ring-accent ring-offset-1 ring-offset-panel' : '')}
+          className={cx('grid size-6 shrink-0 place-items-center rounded-full p-[2px]', custom || open ? 'ring-2 ring-accent ring-offset-2 ring-offset-panel' : '')}
           style={{ background: 'conic-gradient(#e03131, #f59f00, #fcc419, #40c057, #22b8cf, #1c7ed6, #7950f2, #e64980, #e03131)' }}
           title="Any color"
           aria-label="Custom paper color"
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >
-          <span className="size-full rounded-[3px] border-[1.5px] border-panel" style={{ background }} />
+          <span className="size-full rounded-full border-2 border-panel" style={{ background }} />
         </button>
       </div>
       {open && (

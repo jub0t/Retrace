@@ -7,55 +7,58 @@
  * The theme. Every colour, radius and metric the interface is made of is a token here,
  * and nothing outside this file names a colour.
  *
- * Surfaces are a neutral grey ladder with no blue cast: canvas (the ground the paper
- * sits on) < well < lane < panel < raised < field < field-hover < field-active. Each step
- * exists to be told from the one under it, so controls carry no outlines: the value step
- * does that job. Hairlines are white-alpha so they hold on any surface. One accent marks
- * what is selected or active; it is bright, so what sits on it is dark ink. Overlays
- * drawn on the paper itself use the accent's deep shade instead, since the paper is
- * near-white. The playhead wears the accent while playing; danger is the one red.
+ * Two themes share one set of names. Light is the default; `data-theme="dark"` on the
+ * root (set by theme.ts when you switch) swaps the values below.
+ *
+ * Surfaces are a neutral ladder: canvas (the ground the paper sits on) < well < lane <
+ * panel < raised, then field < field-hover < field-active for controls. Controls carry
+ * no outlines: the value step does that job. One accent marks what is selected or
+ * active; danger is the one red. Overlays drawn on the paper itself use the accent's
+ * deep shade in both themes, since the paper is near-white.
  */
 @theme {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --color-canvas: #151517;
-  --color-well: #19191b;
-  --color-lane: #1a1a1c;
-  --color-panel: #212123;
-  --color-raised: #2b2b2e;
-  --color-field: #323235;
-  --color-field-hover: #3b3b3e;
-  --color-field-active: #46464a;
-  --color-hover: #3b3b3e;
+  --color-canvas: #e9e9ec;
+  --color-well: #f2f2f4;
+  --color-lane: #f5f5f7;
+  --color-panel: #ffffff;
+  --color-raised: #ffffff;
+  --color-field: #f1f1f3;
+  --color-field-hover: #e8e8eb;
+  --color-field-active: #dcdce0;
+  --color-hover: #f0f0f2;
   --color-paper: #f8f9fa;
 
-  --color-line: rgb(255 255 255 / 0.1);
-  --color-line-strong: rgb(255 255 255 / 0.2);
+  --color-line: rgb(0 0 0 / 0.07);
+  --color-line-strong: rgb(0 0 0 / 0.14);
 
-  --color-ink: #f5f5f7;
-  --color-on-ink: #16161a;
-  --color-muted: #a1a1a6;
-  --color-faint: #6e6e73;
+  --color-ink: #1c1c1f;
+  --color-ink-hover: #3a3a40;
+  --color-on-ink: #ffffff;
+  --color-muted: #6b6b74;
+  --color-faint: #a0a0a8;
 
-  --color-accent: #cbf53f;
-  --color-accent-strong: #d9ff63;
-  --color-accent-soft: rgb(203 245 63 / 0.2);
-  --color-on-accent: #15220a;
-  --color-danger: #ff453a;
-  --color-danger-soft: rgb(255 69 58 / 0.14);
+  --color-accent: #4d7c0f;
+  --color-accent-strong: #3f6a0a;
+  --color-accent-soft: rgb(101 163 13 / 0.14);
+  --color-on-accent: #ffffff;
+  --color-danger: #e5484d;
+  --color-danger-soft: rgb(229 72 77 / 0.1);
+  --color-scrim: rgb(24 24 28 / 0.32);
 
   /* Two corners: controls, and the surfaces that float over them. */
-  --radius-ctl: 6px;
-  --radius-panel: 10px;
+  --radius-ctl: 8px;
+  --radius-panel: 12px;
 
-  --shadow-island: 0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 3px rgb(0 0 0 / 0.4);
-  --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.1), 0 8px 24px rgb(0 0 0 / 0.5);
-  --shadow-thumb: 0 0 0 1px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
-  --shadow-thumb-active: 0 0 0 1.5px var(--color-accent), 0 0 0 5px rgb(203 245 63 / 0.2);
+  --shadow-island: 0 0 0 1px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 14px rgb(0 0 0 / 0.06);
+  --shadow-pop: 0 0 0 1px rgb(0 0 0 / 0.06), 0 12px 32px rgb(0 0 0 / 0.14);
+  --shadow-thumb: 0 0 0 1px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.2);
+  --shadow-thumb-active: 0 0 0 1.5px var(--color-accent), 0 0 0 5px var(--color-accent-soft);
 
   --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --animate-pop-in: pop-in 120ms var(--ease-snappy);
-  --animate-fade-in: fade-in 120ms ease-out;
+  --animate-pop-in: pop-in 140ms var(--ease-snappy);
+  --animate-fade-in: fade-in 140ms ease-out;
 
   @keyframes pop-in {
     from {
@@ -71,8 +74,42 @@
 }
 
 @layer base {
-  html {
+  :root[data-theme='dark'] {
     color-scheme: dark;
+
+    --color-canvas: #151517;
+    --color-well: #19191b;
+    --color-lane: #1a1a1c;
+    --color-panel: #212123;
+    --color-raised: #2b2b2e;
+    --color-field: #323235;
+    --color-field-hover: #3b3b3e;
+    --color-field-active: #46464a;
+    --color-hover: #3b3b3e;
+
+    --color-line: rgb(255 255 255 / 0.08);
+    --color-line-strong: rgb(255 255 255 / 0.16);
+
+    --color-ink: #f5f5f7;
+    --color-ink-hover: #ffffff;
+    --color-on-ink: #16161a;
+    --color-muted: #a1a1a6;
+    --color-faint: #6e6e73;
+
+    --color-accent: #cbf53f;
+    --color-accent-strong: #d9ff63;
+    --color-accent-soft: rgb(203 245 63 / 0.18);
+    --color-on-accent: #15220a;
+    --color-danger: #ff453a;
+    --color-danger-soft: rgb(255 69 58 / 0.14);
+    --color-scrim: rgb(0 0 0 / 0.6);
+
+    --shadow-island: 0 0 0 1px rgb(255 255 255 / 0.07), 0 1px 3px rgb(0 0 0 / 0.4);
+    --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.09), 0 10px 28px rgb(0 0 0 / 0.5);
+    --shadow-thumb: 0 0 0 1px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  }
+  html {
+    color-scheme: light;
   }
   html,
   body,
@@ -83,7 +120,7 @@
   }
   body {
     font-family: var(--font-sans);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--color-ink);
     -webkit-font-smoothing: antialiased;
     user-select: none;

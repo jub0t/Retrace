@@ -236,3 +236,51 @@ export const FitIcon = () => (
     <path d="M4 9V5.5A1.5 1.5 0 015.5 4H9M15 4h3.5A1.5 1.5 0 0120 5.5V9M20 15v3.5a1.5 1.5 0 01-1.5 1.5H15M9 20H5.5A1.5 1.5 0 014 18.5V15" />
   </Icon>
 );
+
+export const SunIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
+  </Icon>
+);
+
+export const MoonIcon = () => (
+  <Icon>
+    <path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" />
+  </Icon>
+);
+
+export const EyeIcon = () => (
+  <Icon>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="2.8" />
+  </Icon>
+);
+
+export const EyeOffIcon = () => (
+  <Icon>
+    <path d="M9.9 5.8A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 01-2.6 3.5M6.4 7.3A16.5 16.5 0 002.5 12S6 18.5 12 18.5a9 9 0 004.6-1.3" />
+    <path d="M4 4l16 16" />
+  </Icon>
+);
+
+export const LockIcon = () => (
+  <Icon>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="2" />
+    <path d="M8 10.5V8a4 4 0 018 0v2.5" />
+  </Icon>
+);
+
+export const UnlockIcon = () => (
+  <Icon>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="2" />
+    <path d="M8 10.5V8a4 4 0 017.6-1.7" />
+  </Icon>
+);
+
+export const FilmIcon = () => (
+  <Icon>
+    <rect x="3.5" y="5" width="17" height="14" rx="2" />
+    <path d="M7.5 5v14M16.5 5v14M3.5 9.5h4M3.5 14.5h4M16.5 9.5h4M16.5 14.5h4" />
+  </Icon>
+);

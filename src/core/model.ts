@@ -63,6 +63,13 @@ export interface Step {
   /** Optional human/AI-readable note, e.g. "draw the CPU". */
   label?: string;
   strokes: Stroke[];
+  /** The track this step plays on (a track id). Defaults to the main track. */
+  track?: string;
+  /**
+   * Empty time before this step starts, in ms, after the previous step on the same track
+   * finishes. Lets a caption wait for the drawing it labels. Defaults to 0.
+   */
+  delay?: number;
   /** Pause after this step finishes drawing, in ms. */
   hold: number;
   /** Starts a new scene: the canvas is wiped before this step draws. */
@@ -77,6 +84,20 @@ export interface Step {
   speed?: number;
 }
 
+/**
+ * A row of the timeline. Within a scene, each track plays its own steps one after another,
+ * and tracks play side by side, so a caption can be written while a drawing is drawn.
+ * Tracks also stack: a later track paints over an earlier one.
+ */
+export interface Track {
+  id: string;
+  name: string;
+  /** Left out of the canvas, playback and export; its steps keep their time. */
+  hidden?: boolean;
+  /** Its strokes show but can't be drawn into, selected or erased. */
+  locked?: boolean;
+}
+
 export interface Project {
   version: 1;
   width: number;
@@ -84,19 +105,46 @@ export interface Project {
   background: string;
   /** Playback speed multiplier applied to recorded drawing motion. */
   speed: number;
-  /** Steps are cumulative within a scene: showing step N shows the strokes of steps S..N, where S starts N's scene. */
+  /** Bottom to top. Absent means one main track, which is how every older project plays. */
+  tracks?: Track[];
+  /**
+   * Grouped by scene: a scene is a run of steps starting at step 0 or a `newScene` step.
+   * Within a scene, steps on the same track play in this order.
+   */
   steps: Step[];
 }
 
+export const MAIN_TRACK: Track = { id: 'main', name: 'Main' };
+
+export function tracksOf(project: Project): Track[] {
+  return project.tracks?.length ? project.tracks : [MAIN_TRACK];
+}
+
+/** Position of a step's track in the stack (0 = bottom). Unknown tracks fall back to the bottom one. */
+export function trackIndex(project: Project, step: Step): number {
+  const tracks = tracksOf(project);
+  const id = step.track ?? MAIN_TRACK.id;
+  return Math.max(0, tracks.findIndex((t) => t.id === id));
+}
+
+export function trackOf(project: Project, step: Step): Track {
+  return tracksOf(project)[trackIndex(project, step)];
+}
+
+/** Stacking key for a stroke: its track first, then its own layer within the track. */
+export function strokeZ(track: number, stroke: Stroke): number {
+  return track * 1e6 + (stroke.layer ?? 0);
+}
+
 /**
- * Strokes in the order they're painted, bottom to top: by layer, then in drawing order.
- * Stable, and returns the input untouched when nothing is layered.
+ * Items in the order they're painted, bottom to top: by stacking key (see `strokeZ`),
+ * then in drawing order. Stable, and returns the input untouched when nothing is stacked.
  */
-export function paintOrder<T>(items: T[], strokeOf: (item: T) => Stroke): T[] {
-  if (!items.some((it) => strokeOf(it).layer)) return items;
+export function paintOrder<T>(items: T[], zOf: (item: T) => number): T[] {
+  if (!items.some((it) => zOf(it))) return items;
   return items
-    .map((item, i) => ({ item, i, layer: strokeOf(item).layer ?? 0 }))
-    .sort((a, b) => a.layer - b.layer || a.i - b.i)
+    .map((item, i) => ({ item, i, z: zOf(item) }))
+    .sort((a, b) => a.z - b.z || a.i - b.i)
     .map((e) => e.item);
 }
 
@@ -170,6 +218,9 @@ export function parseProject(data: unknown): Project {
   }
   for (const step of p.steps) {
     if (!Array.isArray(step.strokes)) throw new Error(`Step ${step.id} has no strokes array`);
+  }
+  if (p.tracks !== undefined && (!Array.isArray(p.tracks) || p.tracks.some((t) => typeof t?.id !== 'string'))) {
+    throw new Error('Tracks must be a list of { id, name }');
   }
   return {
     ...createProject(),

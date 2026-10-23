@@ -70,13 +70,16 @@ export function drawBackground(ctx: CanvasRenderingContext2D, project: Project, 
 /** One playback frame at `time` ms, in project coordinates. */
 export function drawFrame(ctx: CanvasRenderingContext2D, project: Project, time: number, transparent = false): void {
   drawBackground(ctx, project, transparent);
-  for (const { stroke, elapsed } of paintOrder([...visibleStrokes(getTimeline(project), time)], (v) => v.stroke)) drawStroke(ctx, stroke, elapsed);
+  for (const { stroke, elapsed } of paintOrder([...visibleStrokes(getTimeline(project), time)], (v) => v.z)) drawStroke(ctx, stroke, elapsed);
 }
 
-/** Draw strokes bottom to top by layer (each with an optional alpha, e.g. onion-skin dimming). */
-export function drawStack(ctx: CanvasRenderingContext2D, items: { stroke: Stroke; alpha?: number }[]): void {
+/**
+ * Draw strokes bottom to top (each with an optional alpha, e.g. onion-skin dimming), by
+ * their stacking key `z` when given (see `strokeZ`), otherwise by their own layer.
+ */
+export function drawStack(ctx: CanvasRenderingContext2D, items: { stroke: Stroke; alpha?: number; z?: number }[]): void {
   const base = ctx.globalAlpha;
-  for (const { stroke, alpha = 1 } of paintOrder(items, (it) => it.stroke)) {
+  for (const { stroke, alpha = 1 } of paintOrder(items, (it) => it.z ?? it.stroke.layer ?? 0)) {
     ctx.globalAlpha = base * alpha;
     drawStroke(ctx, stroke);
   }

@@ -16,11 +16,14 @@ import {
   parseProject,
   placeAsset,
   sceneOf,
-  sceneStart,
   scenesOf,
   stepEndTime,
+  stepsShownWhileEditing,
   strokeClipboard,
+  strokeZ,
   strokesBounds,
+  trackIndex,
+  tracksOf,
   transformStrokes,
   uid,
   withNewIds,
@@ -30,6 +33,7 @@ import {
   type Project,
   type Step,
   type Stroke,
+  type Track,
 } from '../core';
 import { drawFrame } from './render';
 import { listProjects, readPref, readProject, removeProject, writePref, writeProject, type ProjectMeta } from './storage';
@@ -97,7 +101,6 @@ export interface EditorState {
 }
 
 const LEGACY_PROJECT_KEY = 'retrace:project';
-const LAST_PROJECT_KEY = 'retrace:last-project';
 const LIBRARY_KEY = 'retrace:library';
 const RECENT_COLORS_KEY = 'retrace:recent-colors';
 const HISTORY_LIMIT = 200;
@@ -187,17 +190,35 @@ function clampStep(project: Project, i: number): number {
   return Math.max(0, Math.min(project.steps.length - 1, i));
 }
 
-/** First and last step whose strokes are on the canvas while editing `current`. */
-export function editableRange(project: Project, current: number): [number, number] {
-  return [sceneStart(project, current), current];
+export interface ShownStroke {
+  stroke: Stroke;
+  step: number;
+  /** Stacking key (see `strokeZ`). */
+  z: number;
+  /** On a locked track: shown, but can't be selected or erased. */
+  locked: boolean;
 }
 
-/** Every stroke visible while editing, with the step it belongs to, in drawing order. */
-export function editableStrokes(project: Project, current: number): { stroke: Stroke; step: number }[] {
-  const [from, to] = editableRange(project, current);
-  const out: { stroke: Stroke; step: number }[] = [];
-  for (let i = from; i <= to; i++) for (const stroke of project.steps[i].strokes) out.push({ stroke, step: i });
+/** Every stroke on the canvas while editing `current`, with its step, in drawing order. */
+export function shownStrokes(project: Project, current: number): ShownStroke[] {
+  const tracks = tracksOf(project);
+  const out: ShownStroke[] = [];
+  for (const i of stepsShownWhileEditing(project, current)) {
+    const track = trackIndex(project, project.steps[i]);
+    for (const stroke of project.steps[i].strokes) out.push({ stroke, step: i, z: strokeZ(track, stroke), locked: !!tracks[track].locked });
+  }
   return out;
+}
+
+/** The strokes you can select, erase and move: shown, and not on a locked track. */
+export function editableStrokes(project: Project, current: number): ShownStroke[] {
+  return shownStrokes(project, current).filter((s) => !s.locked);
+}
+
+/** Steps whose strokes can be changed while editing `current`. */
+function editableSteps(project: Project, current: number): number[] {
+  const tracks = tracksOf(project);
+  return stepsShownWhileEditing(project, current).filter((i) => !tracks[trackIndex(project, project.steps[i])].locked);
 }
 
 function pruneSelection(project: Project, current: number): ReadonlySet<string> {
@@ -215,9 +236,8 @@ function updateStep(index: number, fn: (step: Step) => Step): Project {
 
 /** Rewrite the strokes of every editable step; steps whose strokes come back unchanged are kept as-is. */
 function mapEditable(base: Project, fn: (strokes: Stroke[]) => Stroke[]): Project {
-  const [from, to] = editableRange(base, state.current);
   const steps = base.steps.slice();
-  for (let i = from; i <= to; i++) {
+  for (const i of editableSteps(base, state.current)) {
     const next = fn(steps[i].strokes);
     if (next !== steps[i].strokes) steps[i] = { ...steps[i], strokes: next };
   }
@@ -228,10 +248,29 @@ const currentStep = () => state.project.steps[state.current];
 
 /** Playback start and end time (ms) of the scene that contains `step`. */
 export function sceneTimes(project: Project, step: number): [number, number] {
-  const { first, last } = sceneOf(project, step);
-  const t = getTimeline(project);
-  return [t.stepStarts[first], t.stepStarts[last + 1] ?? t.duration];
+  const scene = getTimeline(project).scenes[sceneOf(project, step).index];
+  return [scene.start, scene.end];
 }
+
+/**
+ * Put back each scene's markers after steps moved inside it: the scene's first step in
+ * the list starts the scene and carries its name, and no other step does.
+ */
+function remarkScene(steps: Step[], first: number, last: number, marker: Pick<Step, 'newScene' | 'sceneName'>): Step[] {
+  return steps.map((s, i) => {
+    if (i < first || i > last) return s;
+    const { newScene: _n, sceneName: _s, ...rest } = s;
+    const next: Step = i === first ? { ...rest, ...(first > 0 && { newScene: true }), ...(marker.sceneName && { sceneName: marker.sceneName }) } : rest;
+    return next.newScene === s.newScene && next.sceneName === s.sceneName ? s : next;
+  });
+}
+
+/** The tracks as a list you can edit; an older project gets its implicit main track spelled out. */
+function editableTracks(): Track[] {
+  return tracksOf(state.project).slice();
+}
+
+const isLocked = (project: Project, i: number) => !!tracksOf(project)[trackIndex(project, project.steps[i])]?.locked;
 
 /** Every scene's first step starts a new scene (the very first step included, harmlessly). */
 function markSceneStarts(steps: Step[], starts: Set<Step>): Step[] {
@@ -281,6 +320,7 @@ export const actions = {
   },
 
   addStroke(stroke: Stroke) {
+    if (isLocked(state.project, state.current)) return setState({ status: 'This track is locked' });
     commit(updateStep(state.current, (s) => ({ ...s, strokes: [...s.strokes, stroke] })), { selection: NO_SELECTION });
   },
 
@@ -428,6 +468,7 @@ export const actions = {
 
   /** Append strokes to the current step and select them. */
   addStrokes(strokes: Stroke[]) {
+    if (isLocked(state.project, state.current)) return setState({ status: 'This track is locked' });
     commit(
       updateStep(state.current, (s) => ({ ...s, strokes: [...s.strokes, ...strokes] })),
       { selection: new Set(strokes.map((s) => s.id)), ...stopPreview, tool: 'select' },
@@ -471,24 +512,48 @@ export const actions = {
 
   /* ---- steps ---- */
 
+  /** A new step right after the current one, on the same track. */
   addStep() {
     const steps = state.project.steps.slice();
-    steps.splice(state.current + 1, 0, createStep());
+    steps.splice(state.current + 1, 0, createStep({ track: currentStep().track }));
     commit({ ...state.project, steps }, { current: state.current + 1, ...stopPreview });
+  },
+
+  /**
+   * A new step on `trackId` in the current scene: at `time` (ms into the scene) if given and
+   * the track is free by then, otherwise at the end of the track.
+   */
+  addStepOnTrack(trackId: string, time?: number) {
+    const { project } = state;
+    const scene = sceneOf(project, state.current);
+    const timeline = getTimeline(project);
+    const sceneStart = timeline.scenes[scene.index].start;
+    let lastOnTrack = -1;
+    for (let i = scene.first; i <= scene.last; i++) if (tracksOf(project)[trackIndex(project, project.steps[i])].id === trackId) lastOnTrack = i;
+    const trackEnd = lastOnTrack === -1 ? sceneStart : timeline.stepEnds[lastOnTrack];
+    const delay = time === undefined ? 0 : Math.max(0, Math.round(sceneStart + time - trackEnd));
+    const at = scene.last + 1;
+    const steps = project.steps.slice();
+    steps.splice(at, 0, createStep({ track: trackId, ...(delay && { delay }) }));
+    commit({ ...project, steps }, { current: at, ...stopPreview });
   },
 
   /** Add an empty scene after the current one and switch to it. */
   addScene() {
     const { last } = sceneOf(state.project, state.current);
     const steps = state.project.steps.slice();
-    steps.splice(last + 1, 0, createStep({ newScene: true }));
+    steps.splice(last + 1, 0, createStep({ newScene: true, track: currentStep().track }));
     commit({ ...state.project, steps }, { current: last + 1, ...stopPreview });
   },
 
-  /** Switch to a scene, showing it finished (its last step). */
+  /** Switch to a scene, showing it finished (the step that ends last). */
   selectScene(index: number) {
     const scene = scenesOf(state.project)[index];
-    if (scene) setState({ current: scene.last, selection: NO_SELECTION, ...stopPreview, playAll: false });
+    if (!scene) return;
+    const { stepEnds } = getTimeline(state.project);
+    let current = scene.last;
+    for (let i = scene.first; i <= scene.last; i++) if (stepEnds[i] > stepEnds[current]) current = i;
+    setState({ current, selection: NO_SELECTION, ...stopPreview, playAll: false });
   },
 
   renameScene(index: number, name: string) {
@@ -548,28 +613,151 @@ export const actions = {
     commit({ ...state.project, steps }, { current: state.current + 1, ...stopPreview });
   },
 
+  /** Delete a step. The last step of a scene is emptied instead, so the scene stays (delete the scene for that). */
   deleteStep(index = state.current) {
     const { project } = state;
-    if (project.steps.length === 1) {
-      commit(updateStep(0, (s) => ({ ...s, strokes: [] })));
+    const scene = sceneOf(project, index);
+    if (scene.first === scene.last) {
+      commit(updateStep(index, (s) => ({ ...s, strokes: [], label: undefined })));
       return;
     }
-    const current = state.current >= index ? Math.max(0, state.current - 1) : state.current;
-    commit({ ...project, steps: project.steps.filter((_, i) => i !== index) }, { current, ...stopPreview });
+    const marker = project.steps[scene.first];
+    const steps = remarkScene(
+      project.steps.filter((_, i) => i !== index),
+      scene.first,
+      scene.last - 1,
+      marker,
+    );
+    const current = state.current > index || (state.current === index && index > scene.first) ? state.current - 1 : state.current;
+    commit({ ...project, steps }, { current, ...stopPreview });
   },
 
   moveStep(delta: -1 | 1) {
     actions.moveStepTo(state.current, state.current + delta);
   },
 
-  /** Move step `from` so it ends up at index `to`, and keep editing it. */
+  /** Move step `from` so it ends up at index `to` within its scene, and keep editing it. */
   moveStepTo(from: number, to: number) {
     const { project } = state;
-    if (from === to || to < 0 || to >= project.steps.length) return;
+    const scene = sceneOf(project, from);
+    if (from === to || to < scene.first || to > scene.last) return;
     const steps = project.steps.slice();
     const [moved] = steps.splice(from, 1);
     steps.splice(to, 0, moved);
-    commit({ ...project, steps }, { current: to, ...stopPreview });
+    commit({ ...project, steps: remarkScene(steps, scene.first, scene.last, project.steps[scene.first]) }, { current: to, ...stopPreview });
+  },
+
+  /**
+   * Place a step on a track at a time (ms into its scene), as dragging it on the timeline
+   * does. Steps around it keep their place where there's room; ones it now overlaps on the
+   * same track are pushed later.
+   */
+  placeStep(index: number, trackId: string, time: number) {
+    const { project } = state;
+    const scene = sceneOf(project, index);
+    const timeline = getTimeline(project);
+    const sceneStart = timeline.scenes[scene.index].start;
+    const moving = project.steps[index];
+    const length = timeline.stepEnds[index] - timeline.stepStarts[index] - Math.max(0, moving.delay ?? 0);
+    const on = (i: number, id: string) => tracksOf(project)[trackIndex(project, project.steps[i])].id === id;
+    const sourceId = tracksOf(project)[trackIndex(project, moving)].id;
+    const delays = project.steps.map((s) => Math.max(0, s.delay ?? 0));
+
+    // Leaving its track: the step after it keeps its start time.
+    for (let i = index + 1; i <= scene.last; i++) {
+      if (!on(i, sourceId)) continue;
+      delays[i] += delays[index] + length;
+      break;
+    }
+
+    // Where it lands on the target track, by time, among the others there.
+    const others: number[] = [];
+    for (let i = scene.first; i <= scene.last; i++) if (i !== index && on(i, trackId)) others.push(i);
+    const start = sceneStart + Math.max(0, time);
+    // The others keep their times once the moving step is gone: the one after it was compensated above.
+    const startOf = (i: number) => timeline.stepStarts[i];
+    const nextPos = others.findIndex((i) => (startOf(i) + timeline.stepEnds[i]) / 2 > start);
+    const before = nextPos === -1 ? others[others.length - 1] : others[nextPos - 1];
+    const after = nextPos === -1 ? undefined : others[nextPos];
+    const prevEnd = before === undefined ? sceneStart : timeline.stepEnds[before];
+    const placedStart = Math.max(prevEnd, start);
+    delays[index] = Math.round(placedStart - prevEnd);
+    if (after !== undefined) delays[after] = Math.max(0, Math.round(startOf(after) - (placedStart + length)));
+
+    const updated = project.steps.map((s, i) => {
+      const delay = delays[i] || undefined;
+      const track = i === index ? (trackId === tracksOf(project)[0].id && !project.tracks ? undefined : trackId) : s.track;
+      return delay === s.delay && track === s.track ? s : { ...s, delay, track };
+    });
+    // Order in the list only matters within a track: sit right before the next step there, or after the previous one.
+    const [step] = updated.splice(index, 1);
+    const anchor = after !== undefined ? after : before !== undefined ? before + 1 : scene.last + 1;
+    const at = anchor > index ? anchor - 1 : anchor;
+    updated.splice(at, 0, step);
+    const steps = remarkScene(updated, scene.first, scene.last, project.steps[scene.first]);
+    commit({ ...project, steps }, { current: at, ...stopPreview });
+  },
+
+  /* ---- tracks ---- */
+
+  /**
+   * A new track on top of the others, with an empty step to draw into that starts with
+   * the step you're on.
+   */
+  addTrack() {
+    const tracks = editableTracks();
+    const id = uid();
+    tracks.push({ id, name: `Track ${tracks.length + 1}` });
+    const scene = sceneOf(state.project, state.current);
+    const timeline = getTimeline(state.project);
+    const delay = Math.round(timeline.stepStarts[state.current] - timeline.scenes[scene.index].start);
+    const steps = state.project.steps.slice();
+    steps.splice(scene.last + 1, 0, createStep({ track: id, ...(delay > 0 && { delay }) }));
+    commit({ ...state.project, tracks, steps }, { current: scene.last + 1, ...stopPreview });
+  },
+
+  updateTrack(id: string, patch: Partial<Omit<Track, 'id'>>) {
+    const tracks = editableTracks().map((t) => {
+      if (t.id !== id) return t;
+      const next = { ...t, ...patch, name: (patch.name ?? t.name).trim() || t.name };
+      if (!next.hidden) delete next.hidden;
+      if (!next.locked) delete next.locked;
+      return next;
+    });
+    commit({ ...state.project, tracks });
+  },
+
+  /** Move a track up (toward the top of the stack) or down. */
+  moveTrack(id: string, delta: -1 | 1) {
+    const tracks = editableTracks();
+    const from = tracks.findIndex((t) => t.id === id);
+    const to = from + delta;
+    if (from === -1 || to < 0 || to >= tracks.length) return;
+    // Steps that relied on the implicit main track name it, so they don't follow the reshuffle.
+    const steps = state.project.steps.map((s) => (s.track === undefined ? { ...s, track: tracksOf(state.project)[trackIndex(state.project, s)].id } : s));
+    [tracks[from], tracks[to]] = [tracks[to], tracks[from]];
+    commit({ ...state.project, tracks, steps });
+  },
+
+  /** Delete a track and its steps in every scene. A scene left with nothing keeps one empty step. */
+  deleteTrack(id: string) {
+    const { project } = state;
+    const tracks = tracksOf(project);
+    if (tracks.length === 1) return;
+    const remaining = tracks.filter((t) => t.id !== id);
+    // Name every step's track, so none falls back to a different track once this one is gone.
+    const named = project.steps.map((s) => ({ ...s, track: tracks[trackIndex(project, s)].id }));
+    const currentId = project.steps[state.current].id;
+    const steps: Step[] = [];
+    for (const scene of scenesOf(project)) {
+      const kept = named.slice(scene.first, scene.last + 1).filter((s) => s.track !== id);
+      const block = kept.length ? kept : [createStep({ track: remaining[0].id })];
+      const at = steps.length;
+      steps.push(...block);
+      steps.splice(at, block.length, ...remarkScene(steps, at, steps.length - 1, project.steps[scene.first]).slice(at));
+    }
+    const found = steps.findIndex((s) => s.id === currentId);
+    commit({ ...project, tracks: remaining, steps }, { current: found === -1 ? 0 : found, ...stopPreview });
   },
 
   selectStep(i: number) {
@@ -736,7 +924,6 @@ export const actions = {
       clearTimeout(saveTimer);
       unsaved = false;
       setState({ projectId: null });
-      writePref(LAST_PROJECT_KEY, null);
     }
     setState({ projects: state.projects.filter((p) => p.id !== id) });
   },
@@ -774,7 +961,7 @@ export async function flushSave(): Promise<void> {
 
 let initializing: Promise<void> | null = null;
 
-/** Load storage, carry over the old single-project autosave, and reopen the last project. Runs once. */
+/** Load storage and carry over the old single-project autosave, then show the projects. Runs once. */
 export function initStorage(): Promise<void> {
   initializing ??= init();
   return initializing;
@@ -784,8 +971,6 @@ async function init(): Promise<void> {
   try {
     await migrateLegacyAutosave();
     await refreshProjects();
-    const last = readPref<string | null>(LAST_PROJECT_KEY, null);
-    if (last && state.projects.some((p) => p.id === last)) await actions.openProject(last);
     if (state.screen === 'loading') setState({ screen: 'home' });
   } catch (err) {
     showProject(null, 'Untitled', Date.now(), createProject());
@@ -837,7 +1022,6 @@ function showProject(id: string | null, name: string, createdAt: number, project
     diskChanged: false,
     saveState: 'saved',
   });
-  writePref(LAST_PROJECT_KEY, id);
 }
 
 function summarize(id: string, name: string, createdAt: number, updatedAt: number, project: Project): ProjectMeta {

@@ -8,8 +8,8 @@ import { ChevronDownIcon, FolderIcon, MoreIcon, PlusIcon } from './icons';
 import { CANVAS_PRESETS, formatClock } from './Inspector';
 import { readProject, type ProjectMeta } from './storage';
 import { actions, setState, useEditor } from './store';
-import { LOGO_URL, MenuItem } from './TopBar';
-import { IconButton, Popover, TextButton, cx } from './ui';
+import { Logo, MenuItem, MenuSeparator, ThemeToggle } from './TopBar';
+import { IconButton, Popover, PrimaryButton, TextButton, cx } from './ui';
 import { usePopover } from './usePopover';
 
 /** Every project saved in this browser, newest first. */
@@ -19,10 +19,11 @@ export function ProjectsHome() {
 
   return (
     <div className="flex h-full flex-col bg-canvas">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-panel px-4">
-        <img src={LOGO_URL} alt="" className="size-6" />
+      <header className="flex h-14 shrink-0 items-center gap-2.5 border-b border-line bg-panel px-6">
+        <Logo className="size-6" />
         <span className="text-[15px] font-bold tracking-tight">Retrace</span>
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
           <TextButton className="bg-field" onClick={openFile} title="Open a .retrace.json file as a new project">
             <FolderIcon />
             Open file
@@ -32,24 +33,22 @@ export function ProjectsHome() {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-6xl px-5 py-8">
-          <div className="mb-5 flex items-baseline justify-between">
-            <h1 className="text-[22px] font-semibold tracking-tight">Projects</h1>
-            <span className="text-muted">{projects.length} saved in this browser</span>
+        <div className="mx-auto max-w-6xl px-6 py-10">
+          <div className="mb-6 flex items-baseline gap-2.5">
+            <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
+            {projects.length > 0 && <span className="text-muted tabular-nums">{projects.length}</span>}
           </div>
           {projects.length === 0 ? (
-            <div className="grid place-items-center rounded-panel bg-panel px-6 py-20 text-center">
-              <p className="mb-1 text-[17px] font-semibold">No projects yet</p>
-              <p className="mb-5 max-w-sm leading-relaxed text-muted">
-                Start a drawing, or open a <code className="rounded-[4px] bg-field px-1">.retrace.json</code> file. Everything you make is saved here automatically.
-              </p>
-              <button className="inline-flex h-8 items-center gap-1.5 rounded-ctl bg-ink px-4 font-medium text-on-ink hover:bg-white" onClick={() => void actions.createProject()}>
+            <div className="grid place-items-center rounded-panel bg-panel px-6 py-24 text-center shadow-island">
+              <p className="mb-1.5 text-lg font-semibold">No projects yet</p>
+              <p className="mb-6 text-muted">Start drawing, or open a .retrace.json file.</p>
+              <PrimaryButton onClick={() => void actions.createProject()}>
                 <PlusIcon />
                 New project
-              </button>
+              </PrimaryButton>
             </div>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-4">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5">
               {projects.map((p) => (
                 <ProjectCard key={p.id} meta={p} wasOpen={p.id === openId} />
               ))}
@@ -67,16 +66,12 @@ function NewProjectButton() {
   const ref = usePopover<HTMLDivElement>(open, close);
   return (
     <div className="relative flex" ref={ref}>
-      <button
-        className="inline-flex h-7 items-center gap-1.5 rounded-l-ctl bg-ink pr-3 pl-2.5 font-medium text-on-ink hover:bg-white"
-        onClick={() => void actions.createProject()}
-        title="New 16:9 project"
-      >
+      <PrimaryButton className="rounded-r-none pl-3" onClick={() => void actions.createProject()} title="New 16:9 project">
         <PlusIcon />
         New project
-      </button>
+      </PrimaryButton>
       <button
-        className="grid h-7 w-7 place-items-center rounded-r-ctl border-l border-black/15 bg-ink text-on-ink hover:bg-white"
+        className="grid h-8 w-8 place-items-center rounded-r-ctl border-l border-on-ink/20 bg-ink text-on-ink transition-colors hover:bg-ink-hover"
         aria-label="New project with another canvas size"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
@@ -120,7 +115,7 @@ function ProjectCard({ meta, wasOpen }: { meta: ProjectMeta; wasOpen: boolean })
   };
 
   return (
-    <div className={cx('group relative flex flex-col rounded-panel bg-panel shadow-island', wasOpen && 'ring-2 ring-accent')}>
+    <div className={cx('group relative flex flex-col rounded-panel bg-panel shadow-island transition-shadow hover:shadow-pop', wasOpen && 'ring-2 ring-accent')}>
       <button className="block aspect-video overflow-hidden rounded-t-panel border-b border-line bg-well" onClick={() => void actions.openProject(meta.id)} title={`Open ${meta.name}`}>
         {meta.thumbnail ? (
           <img src={meta.thumbnail} alt="" className="size-full object-contain" draggable={false} />
@@ -128,13 +123,13 @@ function ProjectCard({ meta, wasOpen }: { meta: ProjectMeta; wasOpen: boolean })
           <span className="grid size-full place-items-center text-faint">Empty</span>
         )}
       </button>
-      <div className="flex items-start gap-1 px-3 pt-2.5 pb-3">
+      <div className="flex items-center gap-1 py-3 pr-2 pl-4">
         <div className="min-w-0 flex-1">
           {renaming ? (
             <input
               autoFocus
               defaultValue={meta.name}
-              className="-mx-1 h-6 w-full rounded-ctl bg-field px-1 font-medium ring-1 ring-accent outline-none select-text"
+              className="-mx-1 h-7 w-full rounded-ctl bg-field px-1 font-medium ring-1 ring-accent outline-none select-text"
               onBlur={(e) => {
                 setRenaming(false);
                 void actions.renameProject(meta.id, e.currentTarget.value);
@@ -149,15 +144,18 @@ function ProjectCard({ meta, wasOpen }: { meta: ProjectMeta; wasOpen: boolean })
               {meta.name}
             </p>
           )}
-          <p className="mt-0.5 truncate text-[11px] text-muted">
-            {meta.steps} step{meta.steps === 1 ? '' : 's'}, {formatClock(meta.duration)}
-          </p>
-          <p className="truncate text-[11px] text-faint">
-            <RelativeTime time={meta.updatedAt} />
+          <p className="mt-0.5 truncate text-xs text-muted">
+            {formatClock(meta.duration)} · <RelativeTime time={meta.updatedAt} />
           </p>
         </div>
         <div className="relative" ref={menuRef}>
-          <IconButton size="sm" aria-label={`More actions for ${meta.name}`} aria-expanded={menu} active={menu} onClick={() => setMenu(!menu)}>
+          <IconButton
+            className={cx('transition-opacity', !menu && 'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100')}
+            aria-label={`More actions for ${meta.name}`}
+            aria-expanded={menu}
+            active={menu}
+            onClick={() => setMenu(!menu)}
+          >
             <MoreIcon />
           </IconButton>
           {menu && (
@@ -178,7 +176,7 @@ function ProjectCard({ meta, wasOpen }: { meta: ProjectMeta; wasOpen: boolean })
                 }}
               />
               <MenuItem title="Download file" onClick={() => void downloadCopy()} />
-              <div className="mx-1.5 my-1 h-px bg-line" />
+              <MenuSeparator />
               <MenuItem
                 danger
                 title={confirmDelete ? 'Click again to delete forever' : 'Delete'}
@@ -207,5 +205,5 @@ function RelativeTime({ time }: { time: number }) {
   const s = (time - Date.now()) / 1000;
   const [value, unit]: [number, Intl.RelativeTimeFormatUnit] =
     Math.abs(s) < 45 ? [0, 'second'] : Math.abs(s) < 3600 ? [Math.round(s / 60), 'minute'] : Math.abs(s) < 86400 ? [Math.round(s / 3600), 'hour'] : [Math.round(s / 86400), 'day'];
-  return <span title={new Date(time).toLocaleString()}>{value === 0 && unit === 'second' ? 'Just now' : `Edited ${relative.format(value, unit)}`}</span>;
+  return <span title={new Date(time).toLocaleString()}>{value === 0 && unit === 'second' ? 'just now' : relative.format(value, unit)}</span>;
 }

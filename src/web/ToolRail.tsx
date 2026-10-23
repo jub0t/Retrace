@@ -21,29 +21,29 @@ export function ToolRail() {
   const onion = useEditor((s) => s.onion);
 
   return (
-    <nav className="relative z-20 flex w-11 flex-col items-center gap-1 border-r border-line bg-panel py-2" aria-label="Tools">
-      <RailTool tool="select" current={tool} title="Select (V): click any stroke you can see, Shift-click or drag a box; drag to move">
+    <nav className="relative z-20 flex w-14 flex-col items-center gap-1.5 overflow-y-auto border-r border-line bg-panel py-3 [scrollbar-width:none]" aria-label="Tools">
+      <RailTool tool="select" current={tool} title="Select (V)">
         <SelectIcon />
       </RailTool>
-      <RailTool tool="pen" current={tool} title="Pen (P): draws into the current step">
+      <RailTool tool="pen" current={tool} title="Pen (P)">
         <PenIcon />
       </RailTool>
-      <RailTool tool="eraser" current={tool} title="Eraser (E): erases any stroke you can see">
+      <RailTool tool="eraser" current={tool} title="Eraser (E)">
         <EraserIcon />
       </RailTool>
-      <RailTool tool="hand" current={tool} title="Hand (H): drag to pan. Scroll pans too; pinch or Ctrl/⌘ scroll zooms">
+      <RailTool tool="hand" current={tool} title="Hand (H)">
         <HandIcon />
       </RailTool>
       <RailDivider />
       <BrushPicker />
       <RailDivider />
-      <div className="grid grid-cols-2 place-items-center gap-1.5 py-0.5" role="radiogroup" aria-label="Color">
+      <div className="grid grid-cols-2 place-items-center gap-2 py-0.5" role="radiogroup" aria-label="Color">
         {PALETTE.map((c, i) => (
           <button
             key={c}
             className={cx(
-              'size-[18px] shrink-0 rounded-full border-2 border-panel',
-              color === c && !gradient ? 'ring-2 ring-accent' : 'ring-1 ring-white/15',
+              'size-5 shrink-0 rounded-full border-2 border-panel transition-transform hover:scale-110',
+              color === c && !gradient ? 'ring-2 ring-accent' : 'ring-1 ring-line-strong',
             )}
             style={{ background: c }}
             role="radio"
@@ -56,7 +56,7 @@ export function ToolRail() {
       </div>
       <PaintButton side="right-end" />
       <RailDivider />
-      <IconButton active={onion} aria-pressed={onion} title="Onion skin (O): dim earlier steps, ghost the next one" onClick={() => setState({ onion: !onion })}>
+      <IconButton active={onion} aria-pressed={onion} title="Onion skin (O)" onClick={() => setState({ onion: !onion })}>
         <OnionIcon />
       </IconButton>
     </nav>
@@ -65,14 +65,14 @@ export function ToolRail() {
 
 function RailTool({ tool, current, title, children }: { tool: Tool; current: Tool; title: string; children: React.ReactNode }) {
   return (
-    <IconButton active={tool === current} aria-pressed={tool === current} title={title} onClick={() => setState({ tool })}>
+    <IconButton className="size-9" active={tool === current} aria-pressed={tool === current} title={title} onClick={() => setState({ tool })}>
       {children}
     </IconButton>
   );
 }
 
 function RailDivider() {
-  return <span className="my-1 h-px w-6 shrink-0 bg-line" />;
+  return <span className="my-1.5 h-px w-7 shrink-0 bg-line" />;
 }
 
 /**
@@ -93,12 +93,12 @@ function BrushPicker() {
     <div className="relative" ref={ref}>
       <button
         className={cx(
-          'flex h-10 w-8 flex-col items-center justify-center gap-0.5 rounded-ctl transition-colors duration-100',
+          'flex h-11 w-9 flex-col items-center justify-center gap-1 rounded-ctl transition-colors duration-100',
           open ? 'bg-accent-soft text-accent' : 'hover:bg-hover',
         )}
         aria-expanded={open}
         aria-haspopup="dialog"
-        title={`Brush: ${BRUSHES[brush].label}, ${fmtSize(size)}px (− / = to resize)`}
+        title={`${BRUSHES[brush].label}, ${fmtSize(size)} px (− / =)`}
         onClick={() => setOpen(!open)}
       >
         <span className="grid size-5 place-items-center">
@@ -108,12 +108,12 @@ function BrushPicker() {
       </button>
       {open && (
         <Popover side="right" className="w-[316px]" role="dialog" aria-label="Brush">
-          <div className="grid grid-cols-5 gap-1 border-b border-line pb-3" role="radiogroup" aria-label="Brush style">
+          <div className="grid grid-cols-5 gap-1 border-b border-line pb-3.5" role="radiogroup" aria-label="Brush style">
             {BRUSH_STYLES.map((b) => (
               <button
                 key={b}
                 className={cx(
-                  'flex flex-col items-center gap-1 rounded-ctl px-0.5 pt-1.5 pb-1 text-[11px] transition-colors',
+                  'flex flex-col items-center gap-1 rounded-ctl px-0.5 pt-2 pb-1.5 text-[11px] transition-colors',
                   brush === b ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-field',
                 )}
                 role="radio"
@@ -126,11 +126,11 @@ function BrushPicker() {
               </button>
             ))}
           </div>
-          <div className="mt-3 mb-1.5 flex justify-between px-0.5 text-xs font-medium text-muted">
-            <span>{BRUSHES[brush].label} size</span>
+          <div className="mt-3.5 mb-2 flex justify-between px-0.5 font-medium text-muted">
+            <span>Size</span>
             <span className="text-ink tabular-nums">{fmtSize(size)} px</span>
           </div>
-          <BrushSample brush={brush} size={size} color={color} className="mb-1 h-16 rounded-ctl bg-paper" />
+          <BrushSample brush={brush} size={size} color={color} className="mb-2 h-16 rounded-ctl bg-paper" />
           <Slider
             label="Brush size"
             value={size}
@@ -144,7 +144,7 @@ function BrushPicker() {
             defaultValue={BRUSHES[brush].defaultSize}
             onChange={actions.setSize}
           />
-          <div className="mt-1.5 flex gap-1">
+          <div className="mt-2 flex gap-1">
             {presets.map((v) => (
               <button
                 key={v}

@@ -29,17 +29,17 @@ export function LibraryPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-line py-1.5 pr-1.5 pl-3.5">
+      <div className="flex h-11 items-center justify-between border-b border-line pr-2 pl-4">
         <span className="text-muted tabular-nums">
           {library.length} object{library.length === 1 ? '' : 's'}
         </span>
         <span className="flex items-center gap-0.5">
-          <TextButton className="h-6 px-2" onClick={() => fileRef.current?.click()} title="Import objects from .json files">
+          <TextButton className="h-7 px-2.5" onClick={() => fileRef.current?.click()} title="Import objects from .json files">
             Import
           </TextButton>
           {library.length > 0 && (
             <TextButton
-              className="h-6 px-2"
+              className="h-7 px-2.5"
               title="Download every object as one file"
               onClick={() => download(new Blob([JSON.stringify({ type: 'retrace/library', version: 1, assets: library })], { type: 'application/json' }), 'library.retrace-assets.json')}
             >
@@ -61,23 +61,19 @@ export function LibraryPanel() {
       </div>
 
       {library.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center leading-relaxed text-muted">
-          <p className="font-medium text-ink">No objects yet</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-1.5 px-8 text-center leading-relaxed text-muted">
+          <p className="font-semibold text-ink">No objects yet</p>
           <p>
-            Select strokes with <Kbd>V</Kbd>, then choose <b className="font-medium text-ink">Save as object</b>. Reuse them in any
-            drawing, and they replay with the same hand motion.
+            Select strokes with <Kbd>V</Kbd> and save them to reuse anywhere.
           </p>
         </div>
       ) : (
-        <div className="grid flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto p-2.5 [scrollbar-width:thin]">
+        <div className="grid flex-1 auto-rows-min grid-cols-2 gap-3 overflow-y-auto p-4 [scrollbar-width:thin]">
           {library.map((asset) => (
             <AssetCard key={asset.id} asset={asset} />
           ))}
         </div>
       )}
-      <p className="border-t border-line px-3.5 py-2 text-[11px] leading-snug text-faint">
-        Click to add, or drag onto the canvas. Objects are shared by all your projects in this browser; export them to share.
-      </p>
     </div>
   );
 }
@@ -93,17 +89,17 @@ function AssetCard({ asset }: { asset: Asset }) {
 
   return (
     <div
-      className="group relative flex cursor-grab flex-col overflow-hidden rounded-ctl bg-raised ring-1 ring-line hover:ring-accent active:cursor-grabbing"
+      className="group relative flex cursor-grab flex-col overflow-hidden rounded-ctl bg-raised ring-1 ring-line-strong transition-shadow hover:ring-2 hover:ring-accent active:cursor-grabbing"
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData(ASSET_DRAG_TYPE, asset.id);
         e.dataTransfer.effectAllowed = 'copy';
       }}
       onClick={() => !renaming && actions.insertAsset(asset)}
-      title={`${asset.name}: click to add, drag to place`}
+      title="Click to add, or drag onto the canvas"
     >
       <AssetThumb asset={asset} />
-      <div className="flex h-7 items-center border-t border-line px-2 text-xs">
+      <div className="flex h-8 items-center border-t border-line px-2.5 text-xs">
         {renaming ? (
           <input
             autoFocus
@@ -168,7 +164,7 @@ function AssetCard({ asset }: { asset: Asset }) {
 const AssetThumb = memo(function AssetThumb({ asset }: { asset: Asset }) {
   const paths = useMemo(
     () =>
-      paintOrder(asset.strokes, (s) => s).map((s, i) => {
+      paintOrder(asset.strokes, (s) => s.layer ?? 0).map((s, i) => {
         const paint = svgPaint(s, `${asset.id}-${i}`);
         return { d: strokeOutlinePath(s), fill: paint.fill, def: paint.def, opacity: brushOf(s.brush).opacity, area: s.fill ? { d: strokeFillPath(s), fill: s.fill } : null };
       }),

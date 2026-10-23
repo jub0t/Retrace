@@ -29,6 +29,9 @@ import {
   sceneStart,
   shapeToStrokes,
   strokesBounds,
+  trackOf,
+  tracksOf,
+  uid,
   type Project,
   type Shape,
 } from '../core';
@@ -37,6 +40,7 @@ const INSTRUCTIONS = `Retrace makes hand-drawn explainer animations: scrawled bl
 
 A project is a JSON file of cumulative steps. Each step adds strokes on top of the previous ones; playback redraws every stroke at human hand speed, then holds.
 Scenes: a step marked new_scene wipes the canvas before it draws, so a longer video is a run of scenes, each building up over a few steps.
+Tracks: inside a scene, each track plays its own steps in order and tracks play at the same time, so a caption can be written while a drawing is drawn. Later tracks paint on top. Steps are on the main track unless update_step puts them on another; delay waits before a step starts.
 Canvas: default 1920x1080, origin top-left, units are pixels. Stick figures are ~260px tall by default; leave 80px margins.
 
 Workflow: create_project → for each beat of the explanation: draw (with new_step and a label) → render_preview to check the result → fix with remove_last_strokes if needed → export_svg.
@@ -203,7 +207,7 @@ server.registerTool(
   'update_step',
   {
     title: 'Update step',
-    description: 'Change a step\'s label, hold, playback speed or scene break, or clear all of its strokes.',
+    description: 'Change a step\'s label, hold, playback speed, scene break, track or delay, or clear all of its strokes.',
     inputSchema: {
       file: fileArg,
       step: z.number().int().min(0),
@@ -212,9 +216,11 @@ server.registerTool(
       clear: z.boolean().optional().describe('Remove every stroke in the step'),
       new_scene: z.boolean().optional().describe('true: this step starts a new scene (canvas wiped first); false: it continues the previous scene'),
       speed: z.number().positive().optional().describe('Playback speed of this step, times the project speed; 1 resets it'),
+      track: z.string().optional().describe('Name of the track this step plays on; a new name adds a track on top. Steps of the same scene on different tracks play at the same time.'),
+      delay: z.number().min(0).optional().describe('Ms to wait, after the previous step on the same track, before this step starts; 0 resets it'),
     },
   },
-  tool(async ({ file, step, label, hold, clear, new_scene, speed }) => {
+  tool(async ({ file, step, label, hold, clear, new_scene, speed, track, delay }) => {
     const path = resolve(file);
     const project = await load(path);
     const s = getStep(project, step);
@@ -223,6 +229,17 @@ server.registerTool(
     if (clear) s.strokes = [];
     if (new_scene !== undefined) s.newScene = new_scene || undefined;
     if (speed !== undefined) s.speed = speed === 1 ? undefined : speed;
+    if (delay !== undefined) s.delay = delay || undefined;
+    if (track !== undefined) {
+      const tracks = tracksOf(project).slice();
+      let found = tracks.find((t) => t.name.toLowerCase() === track.trim().toLowerCase());
+      if (!found) {
+        found = { id: uid(), name: track.trim() || `Track ${tracks.length + 1}` };
+        tracks.push(found);
+        project.tracks = tracks;
+      }
+      s.track = found.id === tracksOf(project)[0].id && !project.tracks ? undefined : found.id;
+    }
     await save(path, project);
     return `Updated step ${step}.`;
   }),
@@ -451,14 +468,18 @@ function getStep(project: Project, index: number) {
 
 function describe(project: Project): string {
   const timeline = getTimeline(project);
+  const tracks = tracksOf(project);
   const lines = [
     `Canvas ${project.width}x${project.height}, background ${project.background}, speed ${project.speed}x, duration ${(timeline.duration / 1000).toFixed(1)}s.`,
+    ...(tracks.length > 1 ? [`Tracks, bottom to top: ${tracks.map((t) => `"${t.name}"${t.hidden ? ' (hidden)' : ''}${t.locked ? ' (locked)' : ''}`).join(', ')}.`] : []),
     `Steps (${project.steps.length}):`,
     ...project.steps.map((s, i) => {
       const b = strokesBounds(s.strokes);
       const where = b ? ` at x=${b.x} y=${b.y} ${b.width}x${b.height}` : '';
       const speed = s.speed && s.speed !== 1 ? `, ${s.speed}x speed` : '';
-      return `  ${i}. ${s.newScene && i > 0 ? '[new scene] ' : ''}${s.label ? `"${s.label}" ` : ''}${s.strokes.length} stroke(s)${where}, hold ${s.hold}ms${speed}`;
+      const track = tracks.length > 1 ? `, on "${trackOf(project, s).name}" from ${(timeline.stepStarts[i] / 1000).toFixed(1)}s` : '';
+      const delay = s.delay ? `, after a ${s.delay}ms wait` : '';
+      return `  ${i}. ${s.newScene && i > 0 ? '[new scene] ' : ''}${s.label ? `"${s.label}" ` : ''}${s.strokes.length} stroke(s)${where}, hold ${s.hold}ms${speed}${track}${delay}`;
     }),
   ];
   return lines.join('\n');

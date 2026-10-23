@@ -2,10 +2,11 @@
 // Copyright 2026 Jareer Abdullah & Retrace Contributors
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { distanceToStroke, paintOrder, sceneStart, strokesBounds, uid, type Bounds, type Project, type Stroke } from '../core';
+import { currentTheme, useTheme } from './theme';
+import { distanceToStroke, paintOrder, sceneOf, scenesOf, stepNumber, stepsShownWhileEditing, strokeZ, strokesBounds, trackIndex, tracksOf, uid, type Bounds, type Project, type Stroke } from '../core';
 import { FitIcon, MinusIcon, PlusIcon } from './icons';
 import { drawBackground, drawFrame, drawLiveStroke, drawStack } from './render';
-import { actions, editableRange, editableStrokes, getState, setState, subscribe, useEditor, type View } from './store';
+import { actions, editableStrokes, getState, setState, shownStrokes, subscribe, useEditor, type View } from './store';
 import { IconButton, Kbd, cx } from './ui';
 
 const PADDING = 40;
@@ -100,7 +101,7 @@ export function Canvas() {
 
     // Paper lifted off the workspace (shadow sizes are in device pixels, unaffected by the transform).
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowColor = currentTheme() === 'dark' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(0, 0, 0, 0.12)';
     ctx.shadowBlur = 28 * dpr;
     ctx.shadowOffsetY = 4 * dpr;
     ctx.fillStyle = project.background;
@@ -116,14 +117,15 @@ export function Canvas() {
       drawFrame(ctx, project, playhead);
     } else {
       drawBackground(ctx, project);
-      const [from] = editableRange(project, current);
-      const stack: { stroke: Stroke; alpha: number }[] = [];
-      project.steps.forEach((step, i) => {
-        if (i < from || i > current + (onion ? 1 : 0)) return;
-        if (i > current && step.newScene) return; // the next scene isn't on this canvas
-        const alpha = i === current ? 1 : i < current ? (onion ? 0.25 : 1) : 0.08;
-        for (const stroke of step.strokes) if (!erasing.current?.has(stroke.id)) stack.push({ stroke, alpha });
-      });
+      const stack: { stroke: Stroke; alpha: number; z: number }[] = [];
+      for (const { stroke, step, z } of shownStrokes(project, current)) {
+        if (!erasing.current?.has(stroke.id)) stack.push({ stroke, z, alpha: step === current || !onion ? 1 : 0.25 });
+      }
+      // Faintly, for reference: what other tracks draw later in the scene, and with onion skin, what's next on this one.
+      for (const i of laterInScene(project, current, onion)) {
+        const track = trackIndex(project, project.steps[i]);
+        for (const stroke of project.steps[i].strokes) stack.push({ stroke, z: strokeZ(track, stroke), alpha: 0.1 });
+      }
       drawStack(ctx, stack);
       if (draft.current) drawLiveStroke(ctx, draft.current.stroke);
     }
@@ -195,6 +197,9 @@ export function Canvas() {
   }, [size, paint]);
 
   useEffect(() => subscribe(requestPaint), [requestPaint]);
+  // The paper's shadow follows the theme.
+  const theme = useTheme();
+  useEffect(requestPaint, [theme, requestPaint]);
 
   // Trackpad/mouse wheel pans; pinch or Ctrl/⌘ + wheel zooms around the pointer.
   useEffect(() => {
@@ -233,7 +238,7 @@ export function Canvas() {
   /** Topmost visible stroke under the point, from any step on the canvas. */
   const strokeAt = (x: number, y: number): { stroke: Stroke; step: number } | undefined => {
     const { project, current } = getState();
-    const all = paintOrder(editableStrokes(project, current), (e) => e.stroke);
+    const all = paintOrder(editableStrokes(project, current), (e) => e.z);
     const slop = HIT_SLOP / currentView().scale;
     for (let i = all.length - 1; i >= 0; i--) {
       if (distanceToStroke(all[i].stroke, x, y) <= all[i].stroke.size / 2 + slop) return all[i];
@@ -445,11 +450,12 @@ export function Canvas() {
       <CanvasHud />
       <ZoomControls />
       {empty && !previewing && (
-        <div className="pointer-events-none absolute top-1/2 left-1/2 w-[min(440px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 text-center leading-relaxed text-faint">
-          <p className="mb-1 text-[22px] font-semibold tracking-tight text-muted">Draw something.</p>
-          <p>
-            Every stroke is recorded as you draw it. Press <Kbd>N</Kbd> for the next step, <Kbd>Space</Kbd> to watch it play
-            back. <Kbd>?</Kbd> shows all shortcuts.
+        <div className="pointer-events-none absolute top-1/2 left-1/2 w-[min(440px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 text-center text-faint">
+          <p className="mb-3 text-[22px] font-semibold tracking-tight text-muted">Draw something.</p>
+          <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <span><Kbd>N</Kbd> next step</span>
+            <span><Kbd>Space</Kbd> play</span>
+            <span><Kbd>?</Kbd> shortcuts</span>
           </p>
         </div>
       )}
@@ -464,12 +470,14 @@ function CanvasHud() {
   const previewing = useEditor((s) => s.playhead !== null);
   const playing = useEditor((s) => s.playing);
   const step = project.steps[current];
-  const scene = project.steps.slice(0, sceneStart(project, current) + 1).filter((s, i) => i === 0 || s.newScene).length;
-  const scenes = project.steps.filter((s, i) => i === 0 || s.newScene).length;
+  const scene = sceneOf(project, current);
+  const scenes = scenesOf(project).length;
+  const tracks = tracksOf(project);
+  const track = tracks[trackIndex(project, step)];
 
   return (
-    <div className="pointer-events-none absolute top-3 left-3 flex items-center">
-        <span className="flex items-center gap-2 rounded-ctl bg-raised px-2.5 py-1 shadow-island">
+    <div className="pointer-events-none absolute top-4 left-4 flex items-center">
+        <span className="flex h-8 items-center gap-2 rounded-full bg-raised px-3.5 shadow-island">
         {previewing ? (
           <>
             <span className="font-medium text-accent">{playing ? 'Playing' : 'Preview'}</span>
@@ -477,9 +485,10 @@ function CanvasHud() {
           </>
         ) : (
           <>
-            {scenes > 1 && <span className="text-muted">Scene {scene}</span>}
-            <span className="font-medium">Step {current + 1}</span>
-            <span className="-ml-1 text-faint">of {project.steps.length}</span>
+            {scenes > 1 && <span className="text-muted">{scene.name || `Scene ${scene.index + 1}`}</span>}
+            <span className="font-medium">Step {stepNumber(project, current)}</span>
+            {tracks.length > 1 && <span className="text-muted">on {track.name}</span>}
+            {track.locked && <span className="text-danger">Locked</span>}
             {step.label && (
               <>
                 <span className="h-3 w-px bg-line-strong" />
@@ -497,11 +506,11 @@ function ZoomControls() {
   const scale = useEditor((s) => (s.view ?? fitView(s.project)).scale);
   const fitted = useEditor((s) => s.view === null);
   return (
-    <div className="absolute right-3 bottom-3 flex items-center rounded-ctl bg-raised p-0.5 shadow-island">
+    <div className="absolute right-4 bottom-4 flex items-center gap-0.5 rounded-panel bg-raised p-1 shadow-island">
       <IconButton size="sm" title="Zoom out (Ctrl/⌘ −)" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.25)}>
         <MinusIcon />
       </IconButton>
-      <button className="h-7 w-12 rounded-ctl text-xs tabular-nums hover:bg-hover" title="Zoom to 100% (Shift 0)" onClick={zoomToActual}>
+      <button className="h-7 w-12 rounded-ctl text-xs font-medium tabular-nums hover:bg-hover" title="Zoom to 100% (Shift 0)" onClick={zoomToActual}>
         {Math.round(scale * 100)}%
       </button>
       <IconButton size="sm" title="Zoom in (Ctrl/⌘ =)" aria-label="Zoom in" onClick={() => zoomBy(1.25)}>
@@ -512,6 +521,26 @@ function ZoomControls() {
       </IconButton>
     </div>
   );
+}
+
+/** Steps of the scene not on the canvas yet: those on other (visible) tracks, plus the next one on this track if `next`. */
+function laterInScene(project: Project, current: number, next: boolean): number[] {
+  const { first, last } = sceneOf(project, current);
+  const shown = new Set(stepsShownWhileEditing(project, current));
+  const tracks = tracksOf(project);
+  const own = trackIndex(project, project.steps[current]);
+  const out: number[] = [];
+  let nextFound = false;
+  for (let i = first; i <= last; i++) {
+    const track = trackIndex(project, project.steps[i]);
+    if (shown.has(i) || tracks[track].hidden) continue;
+    if (track !== own) out.push(i);
+    else if (next && !nextFound && i > current) {
+      out.push(i);
+      nextFound = true;
+    }
+  }
+  return out;
 }
 
 function selectionBounds(project: Project, current: number, selection: ReadonlySet<string>): Bounds | null {

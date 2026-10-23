@@ -25,7 +25,7 @@ const POPOVER_SIDES: Record<PopoverSide, string> = {
 export function Popover({ className, side = 'bottom', ...rest }: ComponentProps<'div'> & { side?: PopoverSide }) {
   return (
     <div
-      className={cx('absolute z-30 rounded-panel bg-raised p-3 shadow-pop animate-pop-in', POPOVER_SIDES[side], className)}
+      className={cx('absolute z-30 rounded-panel bg-raised p-3.5 shadow-pop animate-pop-in', POPOVER_SIDES[side], className)}
       {...rest}
     />
   );
@@ -34,12 +34,12 @@ export function Popover({ className, side = 'bottom', ...rest }: ComponentProps<
 /** A titled group in a side panel. */
 export function Section({ title, aside, children, className }: { title: ReactNode; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cx('border-b border-line px-3.5 pt-3 pb-3.5', className)}>
-      <div className="mb-2 flex min-h-6 items-center justify-between gap-2">
-        <h3 className="font-medium text-ink">{title}</h3>
+    <section className={cx('border-b border-line px-4 pt-4 pb-5', className)}>
+      <div className="mb-3 flex min-h-7 items-center justify-between gap-2">
+        <h3 className="font-semibold text-ink">{title}</h3>
         {aside}
       </div>
-      <div className="flex flex-col gap-2">{children}</div>
+      <div className="flex flex-col gap-3">{children}</div>
     </section>
   );
 }
@@ -48,7 +48,7 @@ export function Section({ title, aside, children, className }: { title: ReactNod
 export function Field({ label, children, hint, top }: { label: string; children: ReactNode; hint?: string; top?: boolean }) {
   return (
     <div className={cx('flex gap-3', top ? 'items-start' : 'items-center')} title={hint}>
-      <span className={cx('w-16 shrink-0 text-muted', top && 'leading-5')}>{label}</span>
+      <span className={cx('w-20 shrink-0 text-muted', top && 'leading-6')}>{label}</span>
       <div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
     </div>
   );
@@ -76,7 +76,7 @@ export function CommitInput({ value, onCommit, className, ...rest }: Omit<Compon
       key={value}
       defaultValue={value}
       className={cx(
-        'h-7 min-w-0 rounded-ctl bg-field px-2 outline-none transition select-text placeholder:text-faint hover:bg-field-hover focus:bg-field focus:ring-1 focus:ring-accent',
+        'h-8 min-w-0 rounded-ctl bg-field px-2.5 outline-none transition select-text placeholder:text-faint hover:bg-field-hover focus:bg-field focus:ring-1 focus:ring-accent',
         className,
       )}
       onBlur={(e) => onCommit(e.currentTarget.value)}
@@ -107,7 +107,7 @@ export function IconButton({ active, size = 'md', tone = 'default', className, .
     <button
       className={cx(
         buttonBase,
-        size === 'md' ? 'size-7' : 'size-6',
+        size === 'md' ? 'size-8' : 'size-7',
         active ? 'bg-accent-soft text-accent' : 'enabled:hover:bg-hover',
         tone === 'danger' && 'enabled:hover:bg-danger-soft enabled:hover:text-danger',
         className,
@@ -120,9 +120,36 @@ export function IconButton({ active, size = 'md', tone = 'default', className, .
 export function TextButton({ active, className, ...rest }: ButtonProps) {
   return (
     <button
-      className={cx(buttonBase, 'h-7 gap-1.5 px-2.5 whitespace-nowrap', active ? 'bg-accent-soft text-accent' : 'enabled:hover:bg-hover', className)}
+      className={cx(buttonBase, 'h-8 gap-1.5 px-3 whitespace-nowrap', active ? 'bg-accent-soft text-accent' : 'enabled:hover:bg-hover', className)}
       {...rest}
     />
+  );
+}
+
+/** The one filled button in a group: the main thing to do there. */
+export function PrimaryButton({ className, ...rest }: ComponentProps<'button'>) {
+  return (
+    <button
+      className={cx(
+        'inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-ctl bg-ink px-3.5 font-medium whitespace-nowrap text-on-ink transition-colors duration-100 enabled:hover:bg-ink-hover active:translate-y-px',
+        className,
+      )}
+      {...rest}
+    />
+  );
+}
+
+/** A row of small figures: the numbers that matter, without a sentence around them. */
+export function Stats({ items }: { items: [label: string, value: ReactNode][] }) {
+  return (
+    <dl className="grid auto-cols-fr grid-flow-col">
+      {items.map(([label, value]) => (
+        <div key={label} className="flex min-w-0 flex-col-reverse gap-0.5 border-l border-line pl-3 first:border-l-0 first:pl-0">
+          <dt className="truncate text-[11px] text-muted">{label}</dt>
+          <dd className="truncate font-medium text-ink tabular-nums">{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

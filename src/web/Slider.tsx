@@ -159,7 +159,7 @@ export function Slider(props: SliderProps) {
     >
       <div
         ref={trackRef}
-        className={cx('relative w-full rounded-full', props.trackStyle ? 'h-3 ring-1 ring-white/15 ring-inset' : scrubber ? 'h-1.5 bg-field-active' : 'h-1 bg-field-active')}
+        className={cx('relative w-full rounded-full', props.trackStyle ? 'h-3 ring-1 ring-line-strong ring-inset' : scrubber ? 'h-1.5 bg-field-active' : 'h-1 bg-field-active')}
         style={props.trackStyle}
       >
         {!props.trackStyle && (

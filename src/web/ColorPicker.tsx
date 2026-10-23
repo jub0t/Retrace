@@ -40,14 +40,14 @@ export function PaintButton({ side = 'bottom' }: { side?: PopoverSide }) {
     <div className="relative" ref={ref}>
       <button
         className={cx(
-          'mx-0.5 grid size-6 shrink-0 place-items-center rounded-full p-[2px]',
+          'grid size-7 shrink-0 place-items-center rounded-full p-[2px]',
           open || custom ? 'ring-2 ring-accent' : '',
         )}
         style={{ background: 'conic-gradient(#e03131, #f59f00, #fcc419, #40c057, #22b8cf, #1c7ed6, #7950f2, #e64980, #e03131)' }}
         aria-label="Custom color or gradient"
         aria-expanded={open}
         aria-haspopup="dialog"
-        title="Custom color & gradients"
+        title="Any color or gradient"
         onClick={() => setOpen(!open)}
       >
         <span className="size-full rounded-full border-2 border-panel" style={{ background: gradient ? gradientCss(gradient) : color }} />
@@ -89,8 +89,8 @@ function PaintPopover({ side }: { side: PopoverSide }) {
       </div>
       {tab === 'solid' ? <SolidTab color={color} /> : <GradientTab gradient={gradient ?? lastGradient.current ?? startingGradient(color)} />}
       {selected > 0 && (
-        <p className="mt-3 rounded-ctl bg-accent-soft px-2 py-1.5 text-[11px] text-accent">
-          Recoloring {selected} selected stroke{selected === 1 ? '' : 's'}.
+        <p className="mt-3 rounded-ctl bg-accent-soft px-2.5 py-1.5 text-xs text-accent">
+          Recoloring {selected} selected
         </p>
       )}
     </Popover>
@@ -130,7 +130,7 @@ function GradientTab({ gradient }: { gradient: Gradient }) {
             </button>
           ))}
         </div>
-        <span className="size-9 shrink-0 rounded-ctl ring-1 ring-white/15" style={{ background: gradientCss(gradient) }} aria-hidden />
+        <span className="size-9 shrink-0 rounded-ctl ring-1 ring-line-strong" style={{ background: gradientCss(gradient) }} aria-hidden />
       </div>
 
       {gradient.type === 'linear' && (
@@ -181,7 +181,7 @@ function GradientTab({ gradient }: { gradient: Gradient }) {
           {PRESETS.map((p) => (
             <button
               key={p.name}
-              className="aspect-square rounded-full ring-1 ring-white/15"
+              className="aspect-square rounded-full ring-1 ring-line-strong"
               style={{ background: gradientCss(p.gradient) }}
               title={p.name}
               aria-label={`${p.name} gradient`}
@@ -211,7 +211,7 @@ function StopsBar({ gradient, active, onSelect, onChange }: { gradient: Gradient
   return (
     <div
       ref={barRef}
-      className="relative h-8 cursor-copy touch-none rounded-ctl ring-1 ring-white/15 ring-inset"
+      className="relative h-8 cursor-copy touch-none rounded-ctl ring-1 ring-line-strong ring-inset"
       style={{ background: `${gradientCss(gradient, true)}, repeating-conic-gradient(#e9ecef 0 25%, #fff 0 50%) 50% / 12px 12px` }}
       title="Click to add a stop"
       onPointerDown={(e) => {
@@ -279,7 +279,7 @@ export function ColorEditor({ value, onChange }: { value: string; onChange: (hex
         onCommit={(h) => update({ ...hsv, h }, true)}
       />
       <div className="flex items-center gap-2">
-        <span className="size-7 shrink-0 rounded-ctl ring-1 ring-white/15 ring-inset" style={{ background: value }} aria-hidden />
+        <span className="size-7 shrink-0 rounded-ctl ring-1 ring-line-strong ring-inset" style={{ background: value }} aria-hidden />
         <HexField value={value} onCommit={(hex) => update(hexToHsv(hex, hsv.h), true)} />
         {EyeDropper && (
           <IconButton
@@ -317,7 +317,7 @@ function SvSquare({ hsv, onChange }: { hsv: Hsv; onChange: (hsv: Hsv, final: boo
   return (
     <div
       ref={ref}
-      className="relative h-36 cursor-crosshair touch-none rounded-ctl ring-1 ring-white/15 ring-inset outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="relative h-36 cursor-crosshair touch-none rounded-ctl ring-1 ring-line-strong ring-inset outline-none focus-visible:ring-2 focus-visible:ring-accent"
       style={{ background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(${hsv.h} 100% 50%))` }}
       role="slider"
       tabIndex={0}
@@ -386,7 +386,7 @@ function Swatches({ label, colors, active, onPick }: { label: string; colors: st
         {colors.map((c) => (
           <button
             key={c}
-            className={cx('size-6 rounded-full border-2 border-raised', c.toLowerCase() === active.toLowerCase() ? 'ring-2 ring-accent' : 'ring-1 ring-white/15')}
+            className={cx('size-6 rounded-full border-2 border-raised', c.toLowerCase() === active.toLowerCase() ? 'ring-2 ring-accent' : 'ring-1 ring-line-strong')}
             style={{ background: c }}
             aria-label={c}
             title={c}
