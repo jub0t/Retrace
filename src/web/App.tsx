@@ -68,7 +68,7 @@ function Toast() {
   if (!status) return null;
   return (
     <button
-      className="fixed bottom-6 left-1/2 z-40 max-w-[min(560px,calc(100%-32px))] -translate-x-1/2 animate-pop-in truncate rounded-lg bg-ink px-4 py-2.5 text-white shadow-pop"
+      className="fixed bottom-6 left-1/2 z-40 max-w-[min(560px,calc(100%-32px))] -translate-x-1/2 animate-pop-in truncate rounded-ctl bg-raised px-4 py-2 text-ink shadow-pop"
       onClick={() => setState({ status: null })}
       title="Dismiss"
     >

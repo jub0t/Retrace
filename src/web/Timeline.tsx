@@ -198,7 +198,7 @@ export function Timeline() {
   const reorderSlot = drag?.kind === 'block' && drag.moved ? insertionSlot(blocks, clamp((x(blocks[drag.index].start) + drag.dx - PAD) / px, 0, clock.duration)) : null;
 
   return (
-    <section className="relative flex shrink-0 flex-col border-t border-line bg-white" style={{ height }} aria-label="Timeline">
+    <section className="relative flex shrink-0 flex-col border-t border-line bg-panel" style={{ height }} aria-label="Timeline">
       <div
         className="group absolute inset-x-0 -top-[5px] z-30 flex h-[9px] cursor-row-resize justify-center"
         role="separator"
@@ -229,9 +229,9 @@ export function Timeline() {
         onPointerUp={onUp}
         onPointerCancel={() => setDrag(null)}
       >
-        <div className="relative" style={{ width, height: RULER_H + 4 + SCENE_H + trackH + BOTTOM_GAP - 4 }}>
+        <div className="relative bg-lane" style={{ width, height: RULER_H + 4 + SCENE_H + trackH + BOTTOM_GAP - 4 }}>
           {/* Ruler: click or drag to scrub. */}
-          <div className="absolute inset-x-0 top-0 cursor-ew-resize border-b border-line bg-[#fafbfc]" style={{ height: RULER_H }} onPointerDown={startScrub}>
+          <div className="absolute inset-x-0 top-0 cursor-ew-resize border-b border-line bg-panel" style={{ height: RULER_H }} onPointerDown={startScrub}>
             <Ruler px={px} duration={duration} width={width} />
           </div>
 
@@ -241,8 +241,8 @@ export function Timeline() {
               <button
                 key={s.first}
                 className={cx(
-                  'absolute top-0 flex h-full items-center gap-1 overflow-hidden rounded-t-md border-x border-t px-2 text-[11px] font-semibold whitespace-nowrap',
-                  current >= s.first && current <= s.last ? 'border-accent/30 bg-accent-soft text-accent' : 'border-line bg-[#f6f7f9] text-muted hover:text-ink',
+                  'absolute top-0 flex h-full items-center gap-1 overflow-hidden rounded-t-ctl border-x border-t px-2 text-[11px] font-medium whitespace-nowrap',
+                  current >= s.first && current <= s.last ? 'border-accent/40 bg-accent-soft text-accent' : 'border-line bg-panel text-muted hover:text-ink',
                 )}
                 style={{ left: x(s.start) + 1, width: Math.max(4, (s.end - s.start) * px - 2) }}
                 title={`Scene ${s.number}: steps ${s.first + 1}–${s.last + 1}`}
@@ -288,8 +288,8 @@ export function Timeline() {
 
           {/* Playhead: where playback is, or where the current step finishes drawing. */}
           <div className="pointer-events-none absolute top-0 bottom-0" style={{ left: x(time) }}>
-            <span className={cx('absolute top-0 -left-[5px] h-[9px] w-[11px] [clip-path:polygon(0_0,100%_0,50%_100%)]', playhead !== null ? 'bg-red-500' : 'bg-ink/60')} />
-            <span className={cx('absolute top-0 bottom-0 -left-px w-[2px]', playhead !== null ? 'bg-red-500' : 'bg-ink/30')} />
+            <span className={cx('absolute top-0 -left-[5px] h-[9px] w-[11px] [clip-path:polygon(0_0,100%_0,50%_100%)]', playhead !== null ? 'bg-accent' : 'bg-ink/50')} />
+            <span className={cx('absolute top-0 bottom-0 -left-px w-[2px]', playhead !== null ? 'bg-accent' : 'bg-ink/30')} />
           </div>
         </div>
       </div>
@@ -304,7 +304,7 @@ function Transport({ time, duration, zoomed, onZoom, onFit }: { time: number; du
   return (
     <div className="flex shrink-0 items-center gap-0.5 border-b border-line px-2" style={{ height: TRANSPORT_H }}>
       <button
-        className="mr-1 grid size-8 shrink-0 place-items-center rounded-full bg-accent text-white transition-colors hover:bg-accent-strong active:translate-y-px"
+        className="mr-1 grid size-7 shrink-0 place-items-center rounded-full bg-ink text-on-ink transition-colors hover:bg-white active:translate-y-px"
         title={playing ? 'Pause (Space)' : 'Play (Space)'}
         aria-label={playing ? 'Pause' : 'Play'}
         onClick={actions.togglePlay}
@@ -325,22 +325,22 @@ function Transport({ time, duration, zoomed, onZoom, onFit }: { time: number; du
         <FrameForwardIcon />
       </IconButton>
       <span className="mx-2 inline-flex items-baseline gap-1 tabular-nums" title="Time · frame">
-        <span className={cx('font-semibold', previewing && 'text-red-500')}>{formatClock(time)}</span>
+        <span className={cx('font-medium', previewing && 'text-accent')}>{formatClock(time)}</span>
         <span className="text-muted">/ {formatClock(duration)}</span>
-        <span className="ml-1 rounded-[5px] bg-hover px-1.5 py-px text-[11px] text-muted max-[700px]:hidden">f{Math.round(time / FRAME_MS)}</span>
+        <span className="ml-1 rounded-ctl bg-field px-1.5 py-px text-[11px] text-muted max-[700px]:hidden">f{Math.round(time / FRAME_MS)}</span>
       </span>
       {previewing && (
-        <TextButton className="h-7 text-xs text-muted" onClick={actions.exitPreview} title="Back to editing the current step (Esc)">
+        <TextButton className="h-6 text-muted" onClick={actions.exitPreview} title="Back to editing the current step (Esc)">
           Back to editing
         </TextButton>
       )}
 
       <div className="ml-auto flex items-center gap-1">
-        <TextButton className="h-8 border border-line" title="New step after the current one (N)" onClick={actions.addStep}>
+        <TextButton className="bg-field" title="New step after the current one (N)" onClick={actions.addStep}>
           <PlusIcon />
           Step
         </TextButton>
-        <TextButton className="h-8 border border-line" title="New scene after the current step: starts on a clean canvas (Shift N)" onClick={actions.addScene}>
+        <TextButton className="bg-field" title="New scene after the current step: starts on a clean canvas (Shift N)" onClick={actions.addScene}>
           <SceneIcon />
           Scene
         </TextButton>
@@ -385,8 +385,8 @@ function StepBlock(props: {
   return (
     <div
       className={cx(
-        'group absolute top-0 flex cursor-pointer overflow-hidden rounded-md border text-left transition-[box-shadow,opacity]',
-        active ? 'z-10 border-accent ring-2 ring-accent/25' : 'border-[#d5d9df] hover:border-faint',
+        'group absolute top-0 flex cursor-pointer overflow-hidden rounded-ctl border text-left transition-[box-shadow,opacity]',
+        active ? 'z-10 border-accent' : 'border-line-strong hover:border-faint',
         dragging !== null && 'z-20 cursor-grabbing opacity-70 shadow-pop',
       )}
       style={{ left: left + 1, width: w, height: trackH, transform: dragging !== null ? `translateX(${dragging}px)` : undefined }}
@@ -399,18 +399,15 @@ function StepBlock(props: {
       }}
     >
       {/* Drawing time, with a tick where each stroke starts. */}
-      <div className={cx('relative h-full shrink-0', active ? 'bg-accent-soft' : 'bg-[#eef0f4]')} style={{ width: drawW }}>
+      <div className={cx('relative h-full shrink-0', active ? 'bg-accent-soft' : 'bg-field')} style={{ width: drawW }}>
         {ticks.map((s) => (
           <span key={s.stroke.id} className={cx('absolute bottom-0 h-2 w-px', active ? 'bg-accent/50' : 'bg-ink/20')} style={{ left: (s.start - block.start) * px }} />
         ))}
       </div>
       {/* Hold time. */}
-      <div
-        className="h-full min-w-0 flex-1 bg-white"
-        style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent 0 5px, rgb(15 20 30 / 0.05) 5px 6px)' }}
-      />
+      <div className="h-full min-w-0 flex-1 bg-raised" />
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-baseline gap-1.5 px-2 pt-1.5 whitespace-nowrap">
-        <span className={cx('text-[11px] font-semibold tabular-nums', active ? 'text-accent' : 'text-muted')}>{block.index + 1}</span>
+        <span className={cx('text-[11px] font-medium tabular-nums', active ? 'text-accent' : 'text-muted')}>{block.index + 1}</span>
         {!renaming && name && <span className={cx('truncate text-xs', step.label ? 'text-ink' : 'text-faint italic')}>{name}</span>}
       </div>
       {w >= 34 && trackH >= 56 && step.strokes.length > 0 && (
@@ -423,7 +420,7 @@ function StepBlock(props: {
           autoFocus
           defaultValue={step.label ?? ''}
           placeholder="Step name"
-          className="absolute inset-x-1 top-1 h-6 rounded border border-accent bg-white px-1.5 text-xs outline-none select-text"
+          className="absolute inset-x-1 top-1 h-6 rounded-ctl bg-field px-1.5 text-xs ring-1 ring-accent outline-none select-text"
           onPointerDown={(e) => e.stopPropagation()}
           onBlur={(e) => props.onRenamed(e.currentTarget.value)}
           onKeyDown={(e) => {
@@ -432,7 +429,7 @@ function StepBlock(props: {
           }}
         />
       )}
-      {step.newScene && block.index > 0 && <span className="absolute top-0 bottom-0 left-0 w-[3px] bg-accent" title="Starts a new scene" />}
+      {step.newScene && block.index > 0 && <span className="absolute top-0 bottom-0 left-0 w-0.5 bg-accent" title="Starts a new scene" />}
       {/* Drag to change the hold. */}
       <span
         data-hold-handle
@@ -448,17 +445,17 @@ function StepPreview({ project, block, left }: { project: Project; block: Block;
   const step = project.steps[block.index];
   const scene = project.steps.slice(0, sceneStart(project, block.index) + 1).filter((s, i) => i === 0 || s.newScene).length;
   return (
-    <div className="pointer-events-none absolute bottom-[calc(100%+8px)] z-40 animate-pop-in overflow-hidden rounded-xl bg-white shadow-pop" style={{ left, width: CARD_W }}>
+    <div className="pointer-events-none absolute bottom-[calc(100%+8px)] z-40 animate-pop-in overflow-hidden rounded-panel bg-raised shadow-pop" style={{ left, width: CARD_W }}>
       <FrameThumb project={project} index={block.index} width={CARD_W} />
       <div className="border-t border-line px-3 pt-2 pb-2.5">
         <p className="truncate font-medium">
           <span className="mr-1.5 text-muted tabular-nums">{block.index + 1}</span>
           {step.label || <span className="text-faint italic">Unnamed step</span>}
         </p>
-        <p className="mt-0.5 text-xs text-muted tabular-nums">
-          Scene {scene} · starts {formatClock(block.start)} · draws {formatSeconds(block.drawEnd - block.start)} · holds {formatSeconds(step.hold)}
+        <p className="mt-0.5 text-[11px] text-muted tabular-nums">
+          Scene {scene}, starts at {formatClock(block.start)}. Draws for {formatSeconds(block.drawEnd - block.start)}, holds {formatSeconds(step.hold)}.
         </p>
-        <p className="mt-1.5 text-[11px] text-faint">Drag to reorder · drag the right edge to change the hold · double-click to rename</p>
+        <p className="mt-1.5 text-[11px] text-faint">Drag to reorder. Drag the right edge to change the hold. Double-click to rename.</p>
       </div>
     </div>
   );
@@ -503,7 +500,8 @@ const AddedThumb = memo(function AddedThumb({ project, index, width, height }: {
     ctx.translate(pad - b.x, pad - b.y);
     drawStack(ctx, strokes.map((stroke) => ({ stroke })));
   });
-  return <canvas ref={ref} className="block" style={{ width, height }} />;
+  // Strokes keep their own colours, so they sit on a scrap of paper rather than on the block.
+  return <canvas ref={ref} className="block rounded-[3px] bg-paper" style={{ width, height }} />;
 }, (a, b) => a.width === b.width && a.height === b.height && a.index === b.index && a.project.steps[a.index] === b.project.steps[b.index]);
 
 /** Size a canvas for the screen's pixel density; returns a context drawing in `scale`d units. */
@@ -525,12 +523,12 @@ function Ruler({ px, duration, width }: { px: number; duration: number; width: n
   const perMajor = Math.round(major / minor);
   for (let k = 0; k * minor <= end; k++) ticks.push({ t: k * minor, major: k % perMajor === 0 });
   return (
-    <svg className="absolute inset-0 overflow-visible" width={width} height={RULER_H} aria-hidden>
+    <svg className="absolute inset-0 overflow-visible text-muted" width={width} height={RULER_H} aria-hidden>
       {ticks.map(({ t, major: m }) => (
         <g key={t} transform={`translate(${PAD + t * px} 0)`} opacity={t > duration ? 0.4 : 1}>
-          <line y1={m ? RULER_H - 10 : RULER_H - 5} y2={RULER_H} stroke="#9aa1ab" strokeWidth={1} />
+          <line y1={m ? RULER_H - 10 : RULER_H - 5} y2={RULER_H} stroke="currentColor" strokeOpacity={0.5} strokeWidth={1} />
           {m && (
-            <text x={3} y={12} fontSize={10.5} fill="#6b7280" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            <text x={3} y={12} fontSize={10.5} fill="currentColor" style={{ fontVariantNumeric: 'tabular-nums' }}>
               {formatTick(t, major)}
             </text>
           )}

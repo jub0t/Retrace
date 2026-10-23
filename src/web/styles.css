@@ -3,33 +3,64 @@
 
 @import 'tailwindcss';
 
+/*
+ * The theme. Every colour, radius and metric the interface is made of is a token here,
+ * and nothing outside this file names a colour.
+ *
+ * Surfaces are a neutral grey ladder with no blue cast: canvas (the ground the paper
+ * sits on) < well < lane < panel < raised < field < field-hover < field-active. Each step
+ * exists to be told from the one under it, so controls carry no outlines: the value step
+ * does that job. Hairlines are white-alpha so they hold on any surface. One accent marks
+ * what is selected or active; it is bright, so what sits on it is dark ink. Overlays
+ * drawn on the paper itself use the accent's deep shade instead, since the paper is
+ * near-white. The playhead wears the accent while playing; danger is the one red.
+ */
 @theme {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --color-canvas: #eceef1;
-  --color-ink: #1b1d21;
-  --color-muted: #6b7280;
-  --color-faint: #9aa1ab;
-  --color-line: #e4e6ea;
-  --color-hover: #f2f3f5;
+  --color-canvas: #151517;
+  --color-well: #19191b;
+  --color-lane: #1a1a1c;
+  --color-panel: #212123;
+  --color-raised: #2b2b2e;
+  --color-field: #323235;
+  --color-field-hover: #3b3b3e;
+  --color-field-active: #46464a;
+  --color-hover: #3b3b3e;
   --color-paper: #f8f9fa;
-  --color-accent: #5b5bd6;
-  --color-accent-strong: #4a4ac4;
-  --color-accent-soft: #ececfc;
 
-  --shadow-island: 0 0 0 1px rgb(15 20 30 / 0.05), 0 2px 4px rgb(15 20 30 / 0.04), 0 8px 24px rgb(15 20 30 / 0.08);
-  --shadow-pop: 0 0 0 1px rgb(15 20 30 / 0.06), 0 12px 32px rgb(15 20 30 / 0.16);
-  --shadow-thumb: 0 0 0 1.5px var(--color-accent), 0 1px 3px rgb(0 0 0 / 0.2);
-  --shadow-thumb-active: 0 0 0 1.5px var(--color-accent), 0 0 0 6px rgb(91 91 214 / 0.2);
+  --color-line: rgb(255 255 255 / 0.1);
+  --color-line-strong: rgb(255 255 255 / 0.2);
+
+  --color-ink: #f5f5f7;
+  --color-on-ink: #16161a;
+  --color-muted: #a1a1a6;
+  --color-faint: #6e6e73;
+
+  --color-accent: #cbf53f;
+  --color-accent-strong: #d9ff63;
+  --color-accent-soft: rgb(203 245 63 / 0.2);
+  --color-on-accent: #15220a;
+  --color-danger: #ff453a;
+  --color-danger-soft: rgb(255 69 58 / 0.14);
+
+  /* Two corners: controls, and the surfaces that float over them. */
+  --radius-ctl: 6px;
+  --radius-panel: 10px;
+
+  --shadow-island: 0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 3px rgb(0 0 0 / 0.4);
+  --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.1), 0 8px 24px rgb(0 0 0 / 0.5);
+  --shadow-thumb: 0 0 0 1px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  --shadow-thumb-active: 0 0 0 1.5px var(--color-accent), 0 0 0 5px rgb(203 245 63 / 0.2);
 
   --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --animate-pop-in: pop-in 140ms var(--ease-snappy);
-  --animate-fade-in: fade-in 140ms ease-out;
+  --animate-pop-in: pop-in 120ms var(--ease-snappy);
+  --animate-fade-in: fade-in 120ms ease-out;
 
   @keyframes pop-in {
     from {
       opacity: 0;
-      transform: translateY(-4px) scale(0.98);
+      transform: translateY(-3px);
     }
   }
   @keyframes fade-in {
@@ -40,6 +71,9 @@
 }
 
 @layer base {
+  html {
+    color-scheme: dark;
+  }
   html,
   body,
   #root {
@@ -49,7 +83,7 @@
   }
   body {
     font-family: var(--font-sans);
-    font-size: 13px;
+    font-size: 12px;
     color: var(--color-ink);
     -webkit-font-smoothing: antialiased;
     user-select: none;
@@ -60,5 +94,13 @@
   }
   button:not(:disabled) {
     cursor: pointer;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

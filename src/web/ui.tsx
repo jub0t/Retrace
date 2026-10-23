@@ -9,7 +9,7 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
 }
 
 export function Island({ className, ...rest }: ComponentProps<'div'>) {
-  return <div className={cx('rounded-xl bg-white shadow-island', className)} {...rest} />;
+  return <div className={cx('rounded-panel bg-raised shadow-island', className)} {...rest} />;
 }
 
 /** Floating panel anchored to its (relatively positioned) parent: below it, or to its right. */
@@ -25,7 +25,7 @@ const POPOVER_SIDES: Record<PopoverSide, string> = {
 export function Popover({ className, side = 'bottom', ...rest }: ComponentProps<'div'> & { side?: PopoverSide }) {
   return (
     <div
-      className={cx('absolute z-30 rounded-xl bg-white p-3 shadow-pop animate-pop-in', POPOVER_SIDES[side], className)}
+      className={cx('absolute z-30 rounded-panel bg-raised p-3 shadow-pop animate-pop-in', POPOVER_SIDES[side], className)}
       {...rest}
     />
   );
@@ -34,12 +34,12 @@ export function Popover({ className, side = 'bottom', ...rest }: ComponentProps<
 /** A titled group in a side panel. */
 export function Section({ title, aside, children, className }: { title: ReactNode; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cx('border-b border-line px-4 pt-3 pb-4', className)}>
-      <div className="mb-2.5 flex min-h-6 items-center justify-between gap-2">
-        <h3 className="text-[11px] font-semibold tracking-wider text-muted uppercase">{title}</h3>
+    <section className={cx('border-b border-line px-3.5 pt-3 pb-3.5', className)}>
+      <div className="mb-2 flex min-h-6 items-center justify-between gap-2">
+        <h3 className="font-medium text-ink">{title}</h3>
         {aside}
       </div>
-      <div className="flex flex-col gap-2.5">{children}</div>
+      <div className="flex flex-col gap-2">{children}</div>
     </section>
   );
 }
@@ -48,7 +48,7 @@ export function Section({ title, aside, children, className }: { title: ReactNod
 export function Field({ label, children, hint, top }: { label: string; children: ReactNode; hint?: string; top?: boolean }) {
   return (
     <div className={cx('flex gap-3', top ? 'items-start' : 'items-center')} title={hint}>
-      <span className={cx('w-[72px] shrink-0 text-muted', top && 'leading-5')}>{label}</span>
+      <span className={cx('w-16 shrink-0 text-muted', top && 'leading-5')}>{label}</span>
       <div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
     </div>
   );
@@ -61,7 +61,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
       aria-checked={checked}
       aria-label={label}
       disabled={disabled}
-      className={cx('relative h-[18px] w-8 shrink-0 rounded-full transition-colors disabled:opacity-40', checked ? 'bg-accent' : 'bg-[#d5d9df]')}
+      className={cx('relative h-[18px] w-8 shrink-0 rounded-full transition-colors disabled:opacity-40', checked ? 'bg-accent' : 'bg-field-active')}
       onClick={() => onChange(!checked)}
     >
       <span className={cx('absolute top-[2px] size-[14px] rounded-full bg-white shadow-sm transition-[left] duration-150 ease-snappy', checked ? 'left-4' : 'left-[2px]')} />
@@ -76,7 +76,7 @@ export function CommitInput({ value, onCommit, className, ...rest }: Omit<Compon
       key={value}
       defaultValue={value}
       className={cx(
-        'h-8 min-w-0 rounded-lg border border-line bg-[#fafbfc] px-2.5 outline-none transition select-text placeholder:text-faint hover:border-[#d3d7dd] focus:border-accent focus:bg-white focus:ring-3 focus:ring-accent/15',
+        'h-7 min-w-0 rounded-ctl bg-field px-2 outline-none transition select-text placeholder:text-faint hover:bg-field-hover focus:bg-field focus:ring-1 focus:ring-accent',
         className,
       )}
       onBlur={(e) => onCommit(e.currentTarget.value)}
@@ -100,16 +100,16 @@ interface ButtonProps extends ComponentProps<'button'> {
 }
 
 const buttonBase =
-  'inline-flex shrink-0 items-center justify-center rounded-lg transition-colors duration-100 active:translate-y-px disabled:text-faint disabled:active:translate-y-0';
+  'inline-flex shrink-0 items-center justify-center rounded-ctl transition-colors duration-100 active:translate-y-px disabled:text-faint disabled:active:translate-y-0';
 
 export function IconButton({ active, size = 'md', tone = 'default', className, ...rest }: ButtonProps) {
   return (
     <button
       className={cx(
         buttonBase,
-        size === 'md' ? 'size-[34px]' : 'size-7',
+        size === 'md' ? 'size-7' : 'size-6',
         active ? 'bg-accent-soft text-accent' : 'enabled:hover:bg-hover',
-        tone === 'danger' && 'enabled:hover:bg-red-50 enabled:hover:text-red-600',
+        tone === 'danger' && 'enabled:hover:bg-danger-soft enabled:hover:text-danger',
         className,
       )}
       {...rest}
@@ -120,7 +120,7 @@ export function IconButton({ active, size = 'md', tone = 'default', className, .
 export function TextButton({ active, className, ...rest }: ButtonProps) {
   return (
     <button
-      className={cx(buttonBase, 'h-[34px] gap-1.5 px-2.5 whitespace-nowrap', active ? 'bg-accent-soft text-accent' : 'enabled:hover:bg-hover', className)}
+      className={cx(buttonBase, 'h-7 gap-1.5 px-2.5 whitespace-nowrap', active ? 'bg-accent-soft text-accent' : 'enabled:hover:bg-hover', className)}
       {...rest}
     />
   );
@@ -132,7 +132,7 @@ export function Divider() {
 
 export function Kbd({ children }: { children: string }) {
   return (
-    <kbd className="inline-block min-w-5 rounded-[5px] border border-b-2 border-line bg-white px-1.5 text-center font-mono text-[11px] leading-4 font-semibold whitespace-nowrap text-ink">
+    <kbd className="inline-block min-w-5 rounded-[4px] bg-field px-1.5 text-center font-mono text-[11px] leading-[18px] font-medium whitespace-nowrap text-ink">
       {children}
     </kbd>
   );

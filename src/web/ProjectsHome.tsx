@@ -19,11 +19,11 @@ export function ProjectsHome() {
 
   return (
     <div className="flex h-full flex-col bg-canvas">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-white px-5">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-panel px-4">
         <img src={LOGO_URL} alt="" className="size-6" />
-        <span className="text-[15px] font-semibold tracking-tight">Retrace</span>
+        <span className="text-[15px] font-bold tracking-tight">Retrace</span>
         <div className="ml-auto flex items-center gap-1.5">
-          <TextButton className="border border-line" onClick={openFile} title="Open a .retrace.json file as a new project">
+          <TextButton className="bg-field" onClick={openFile} title="Open a .retrace.json file as a new project">
             <FolderIcon />
             Open file
           </TextButton>
@@ -35,15 +35,15 @@ export function ProjectsHome() {
         <div className="mx-auto max-w-6xl px-5 py-8">
           <div className="mb-5 flex items-baseline justify-between">
             <h1 className="text-[22px] font-semibold tracking-tight">Projects</h1>
-            <span className="text-muted">Saved in this browser · {projects.length}</span>
+            <span className="text-muted">{projects.length} saved in this browser</span>
           </div>
           {projects.length === 0 ? (
-            <div className="grid place-items-center rounded-2xl border border-dashed border-[#cfd3d9] bg-white/60 px-6 py-20 text-center">
+            <div className="grid place-items-center rounded-panel bg-panel px-6 py-20 text-center">
               <p className="mb-1 text-[17px] font-semibold">No projects yet</p>
               <p className="mb-5 max-w-sm leading-relaxed text-muted">
-                Start a drawing, or open a <code className="rounded bg-hover px-1">.retrace.json</code> file. Everything you make is saved here automatically.
+                Start a drawing, or open a <code className="rounded-[4px] bg-field px-1">.retrace.json</code> file. Everything you make is saved here automatically.
               </p>
-              <button className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-4 font-medium text-white hover:bg-accent-strong" onClick={() => void actions.createProject()}>
+              <button className="inline-flex h-8 items-center gap-1.5 rounded-ctl bg-ink px-4 font-medium text-on-ink hover:bg-white" onClick={() => void actions.createProject()}>
                 <PlusIcon />
                 New project
               </button>
@@ -68,7 +68,7 @@ function NewProjectButton() {
   return (
     <div className="relative flex" ref={ref}>
       <button
-        className="inline-flex h-[34px] items-center gap-1.5 rounded-l-lg bg-accent pr-3 pl-2.5 font-medium text-white hover:bg-accent-strong"
+        className="inline-flex h-7 items-center gap-1.5 rounded-l-ctl bg-ink pr-3 pl-2.5 font-medium text-on-ink hover:bg-white"
         onClick={() => void actions.createProject()}
         title="New 16:9 project"
       >
@@ -76,7 +76,7 @@ function NewProjectButton() {
         New project
       </button>
       <button
-        className="grid h-[34px] w-8 place-items-center rounded-r-lg border-l border-white/25 bg-accent text-white hover:bg-accent-strong"
+        className="grid h-7 w-7 place-items-center rounded-r-ctl border-l border-black/15 bg-ink text-on-ink hover:bg-white"
         aria-label="New project with another canvas size"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
@@ -120,10 +120,10 @@ function ProjectCard({ meta, wasOpen }: { meta: ProjectMeta; wasOpen: boolean })
   };
 
   return (
-    <div className={cx('group relative flex flex-col overflow-hidden rounded-xl bg-white shadow-island transition-shadow hover:shadow-pop', wasOpen && 'ring-2 ring-accent/40')}>
-      <button className="block aspect-video overflow-hidden border-b border-line bg-[#f1f3f5]" onClick={() => void actions.openProject(meta.id)} title={`Open ${meta.name}`}>
+    <div className={cx('group relative flex flex-col rounded-panel bg-panel shadow-island', wasOpen && 'ring-2 ring-accent')}>
+      <button className="block aspect-video overflow-hidden rounded-t-panel border-b border-line bg-well" onClick={() => void actions.openProject(meta.id)} title={`Open ${meta.name}`}>
         {meta.thumbnail ? (
-          <img src={meta.thumbnail} alt="" className="size-full object-contain transition-transform duration-300 ease-snappy group-hover:scale-[1.02]" draggable={false} />
+          <img src={meta.thumbnail} alt="" className="size-full object-contain" draggable={false} />
         ) : (
           <span className="grid size-full place-items-center text-faint">Empty</span>
         )}
@@ -134,7 +134,7 @@ function ProjectCard({ meta, wasOpen }: { meta: ProjectMeta; wasOpen: boolean })
             <input
               autoFocus
               defaultValue={meta.name}
-              className="-mx-1 h-6 w-full rounded border border-accent px-1 font-medium outline-none select-text"
+              className="-mx-1 h-6 w-full rounded-ctl bg-field px-1 font-medium ring-1 ring-accent outline-none select-text"
               onBlur={(e) => {
                 setRenaming(false);
                 void actions.renameProject(meta.id, e.currentTarget.value);
@@ -149,8 +149,11 @@ function ProjectCard({ meta, wasOpen }: { meta: ProjectMeta; wasOpen: boolean })
               {meta.name}
             </p>
           )}
-          <p className="mt-0.5 truncate text-xs text-muted">
-            <RelativeTime time={meta.updatedAt} /> · {formatClock(meta.duration)} · {meta.steps} step{meta.steps === 1 ? '' : 's'}
+          <p className="mt-0.5 truncate text-[11px] text-muted">
+            {meta.steps} step{meta.steps === 1 ? '' : 's'}, {formatClock(meta.duration)}
+          </p>
+          <p className="truncate text-[11px] text-faint">
+            <RelativeTime time={meta.updatedAt} />
           </p>
         </div>
         <div className="relative" ref={menuRef}>

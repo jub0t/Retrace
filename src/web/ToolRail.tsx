@@ -21,7 +21,7 @@ export function ToolRail() {
   const onion = useEditor((s) => s.onion);
 
   return (
-    <nav className="relative z-20 flex w-[52px] flex-col items-center gap-1 border-r border-line bg-white py-2" aria-label="Tools">
+    <nav className="relative z-20 flex w-11 flex-col items-center gap-1 border-r border-line bg-panel py-2" aria-label="Tools">
       <RailTool tool="select" current={tool} title="Select (V): click any stroke you can see, Shift-click or drag a box; drag to move">
         <SelectIcon />
       </RailTool>
@@ -42,8 +42,8 @@ export function ToolRail() {
           <button
             key={c}
             className={cx(
-              'size-[19px] shrink-0 rounded-full border-2 border-white transition duration-100 ease-snappy hover:scale-110',
-              color === c && !gradient ? 'ring-2 ring-accent' : 'ring-1 ring-black/10',
+              'size-[18px] shrink-0 rounded-full border-2 border-panel',
+              color === c && !gradient ? 'ring-2 ring-accent' : 'ring-1 ring-white/15',
             )}
             style={{ background: c }}
             role="radio"
@@ -93,7 +93,7 @@ function BrushPicker() {
     <div className="relative" ref={ref}>
       <button
         className={cx(
-          'flex h-[46px] w-[38px] flex-col items-center justify-center gap-0.5 rounded-lg transition-colors duration-100',
+          'flex h-10 w-8 flex-col items-center justify-center gap-0.5 rounded-ctl transition-colors duration-100',
           open ? 'bg-accent-soft text-accent' : 'hover:bg-hover',
         )}
         aria-expanded={open}
@@ -104,7 +104,7 @@ function BrushPicker() {
         <span className="grid size-5 place-items-center">
           <span className="block rounded-full bg-current" style={{ width: dot, height: dot, opacity: BRUSHES[brush].opacity }} />
         </span>
-        <span className="text-[10.5px] leading-none tabular-nums">{fmtSize(size)}</span>
+        <span className="text-[11px] leading-none tabular-nums">{fmtSize(size)}</span>
       </button>
       {open && (
         <Popover side="right" className="w-[316px]" role="dialog" aria-label="Brush">
@@ -113,8 +113,8 @@ function BrushPicker() {
               <button
                 key={b}
                 className={cx(
-                  'flex flex-col items-center gap-1 rounded-lg border px-0.5 pt-1.5 pb-1 text-[10.5px] transition-colors',
-                  brush === b ? 'border-accent bg-accent-soft text-accent' : 'border-transparent text-muted hover:bg-hover',
+                  'flex flex-col items-center gap-1 rounded-ctl px-0.5 pt-1.5 pb-1 text-[11px] transition-colors',
+                  brush === b ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-field',
                 )}
                 role="radio"
                 aria-checked={brush === b}
@@ -130,7 +130,7 @@ function BrushPicker() {
             <span>{BRUSHES[brush].label} size</span>
             <span className="text-ink tabular-nums">{fmtSize(size)} px</span>
           </div>
-          <BrushSample brush={brush} size={size} color={color} className="mb-1 h-16 rounded-lg bg-paper" />
+          <BrushSample brush={brush} size={size} color={color} className="mb-1 h-16 rounded-ctl bg-paper" />
           <Slider
             label="Brush size"
             value={size}
@@ -149,8 +149,8 @@ function BrushPicker() {
               <button
                 key={v}
                 className={cx(
-                  'h-[26px] flex-1 rounded-md border text-xs tabular-nums transition-colors',
-                  size === v ? 'border-accent bg-accent-soft text-accent' : 'border-line hover:border-faint',
+                  'h-7 flex-1 rounded-ctl tabular-nums transition-colors',
+                  size === v ? 'bg-accent-soft font-medium text-accent' : 'bg-field hover:bg-field-hover',
                 )}
                 aria-pressed={size === v}
                 onClick={() => actions.setSize(v)}

@@ -159,7 +159,7 @@ export function Slider(props: SliderProps) {
     >
       <div
         ref={trackRef}
-        className={cx('relative w-full rounded-full', props.trackStyle ? 'h-3 ring-1 ring-black/10 ring-inset' : scrubber ? 'h-1.5 bg-[#eef0f3]' : 'h-1 bg-line')}
+        className={cx('relative w-full rounded-full', props.trackStyle ? 'h-3 ring-1 ring-white/15 ring-inset' : scrubber ? 'h-1.5 bg-field-active' : 'h-1 bg-field-active')}
         style={props.trackStyle}
       >
         {!props.trackStyle && (
@@ -173,7 +173,7 @@ export function Slider(props: SliderProps) {
             key={m.value}
             className={cx(
               'pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2',
-              scrubber ? 'h-3.5 w-0.5 rounded-sm bg-[#c9cdd4]' : 'size-1 rounded-full bg-white ring-1 ring-black/15',
+              scrubber ? 'h-3.5 w-0.5 rounded-sm bg-faint' : 'size-1 rounded-full bg-white ring-1 ring-black/30',
             )}
             style={{ left: `${toPos(m.value) * 100}%` }}
           />
@@ -184,13 +184,13 @@ export function Slider(props: SliderProps) {
           </div>
         ) : (
           <div
-            className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-thumb transition-[scale,box-shadow] duration-100 ease-snappy group-hover:scale-110 group-focus-visible:shadow-thumb-active group-data-dragging:scale-110 group-data-dragging:shadow-thumb-active"
+            className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-thumb transition-[scale,box-shadow] duration-100 ease-snappy group-focus-visible:shadow-thumb-active group-data-dragging:scale-110 group-data-dragging:shadow-thumb-active"
             style={{ left: `${pos * 100}%` }}
           />
         )}
         <span
           className={cx(
-            'pointer-events-none absolute -translate-x-1/2 translate-y-1 rounded-md bg-ink px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-white tabular-nums opacity-0 transition duration-100',
+            'pointer-events-none absolute -translate-x-1/2 translate-y-1 rounded-ctl bg-raised px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-ink tabular-nums opacity-0 shadow-pop transition duration-100',
             'group-focus-visible:translate-y-0 group-focus-visible:opacity-100 group-data-dragging:translate-y-0 group-data-dragging:opacity-100',
             scrubber ? 'bottom-[calc(100%+16px)] group-hover:translate-y-0 group-hover:opacity-100' : 'bottom-[calc(100%+12px)]',
           )}

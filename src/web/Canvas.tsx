@@ -13,6 +13,8 @@ const ERASER_RADIUS = 14;
 /** Screen-pixel sizes for selection chrome, so it feels the same at any zoom. */
 const SELECT_PAD = 8;
 const HANDLE_SIZE = 10;
+/** The accent's deep shade: what is drawn over the near-white paper needs it, the bright one would vanish there. */
+const PAPER_ACCENT = '#4d7c0f';
 const HIT_SLOP = 6;
 const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 8;
@@ -98,7 +100,7 @@ export function Canvas() {
 
     // Paper lifted off the workspace (shadow sizes are in device pixels, unaffected by the transform).
     ctx.save();
-    ctx.shadowColor = 'rgba(15, 20, 30, 0.10)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
     ctx.shadowBlur = 28 * dpr;
     ctx.shadowOffsetY = 4 * dpr;
     ctx.fillStyle = project.background;
@@ -146,7 +148,7 @@ export function Canvas() {
       const pad = SELECT_PAD * px;
       ctx.setLineDash([6 * px, 4 * px]);
       ctx.lineWidth = 1.5 * px;
-      ctx.strokeStyle = '#5b5bd6';
+      ctx.strokeStyle = PAPER_ACCENT;
       ctx.strokeRect(b.x - pad, b.y - pad, b.width + pad * 2, b.height + pad * 2);
       ctx.setLineDash([]);
       if (tool === 'select') {
@@ -161,10 +163,10 @@ export function Canvas() {
     if (d?.kind === 'marquee') {
       const [x0, y0] = d.start;
       const [x1, y1] = d.end;
-      ctx.fillStyle = 'rgba(91, 91, 214, 0.08)';
+      ctx.fillStyle = 'rgba(77, 124, 15, 0.1)';
       ctx.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
       ctx.lineWidth = 1 * px;
-      ctx.strokeStyle = 'rgba(91, 91, 214, 0.7)';
+      ctx.strokeStyle = 'rgba(77, 124, 15, 0.7)';
       ctx.strokeRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
     }
 
@@ -463,22 +465,30 @@ function CanvasHud() {
   const playing = useEditor((s) => s.playing);
   const step = project.steps[current];
   const scene = project.steps.slice(0, sceneStart(project, current) + 1).filter((s, i) => i === 0 || s.newScene).length;
+  const scenes = project.steps.filter((s, i) => i === 0 || s.newScene).length;
 
   return (
-    <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-1.5 text-xs">
-      {previewing ? (
-        <span className="rounded-full bg-ink/85 px-2.5 py-1 font-medium text-white">
-          {playing ? 'Playing' : 'Preview'} <span className="ml-1 text-white/60">Esc to edit</span>
-        </span>
-      ) : (
-        <>
-          <span className="rounded-full bg-white px-2.5 py-1 text-muted shadow-island">
-            Scene {scene} <span className="text-faint">·</span> <span className="font-medium text-ink">Step {current + 1}</span>
-            <span className="text-faint"> of {project.steps.length}</span>
-          </span>
-          {step.label && <span className="max-w-64 truncate rounded-full bg-white px-2.5 py-1 shadow-island">{step.label}</span>}
-        </>
-      )}
+    <div className="pointer-events-none absolute top-3 left-3 flex items-center">
+        <span className="flex items-center gap-2 rounded-ctl bg-raised px-2.5 py-1 shadow-island">
+        {previewing ? (
+          <>
+            <span className="font-medium text-accent">{playing ? 'Playing' : 'Preview'}</span>
+            <span className="text-faint">Esc to edit</span>
+          </>
+        ) : (
+          <>
+            {scenes > 1 && <span className="text-muted">Scene {scene}</span>}
+            <span className="font-medium">Step {current + 1}</span>
+            <span className="-ml-1 text-faint">of {project.steps.length}</span>
+            {step.label && (
+              <>
+                <span className="h-3 w-px bg-line-strong" />
+                <span className="max-w-64 truncate text-muted">{step.label}</span>
+              </>
+            )}
+          </>
+        )}
+      </span>
     </div>
   );
 }
@@ -487,11 +497,11 @@ function ZoomControls() {
   const scale = useEditor((s) => (s.view ?? fitView(s.project)).scale);
   const fitted = useEditor((s) => s.view === null);
   return (
-    <div className="absolute right-3 bottom-3 flex items-center rounded-lg bg-white p-0.5 shadow-island">
+    <div className="absolute right-3 bottom-3 flex items-center rounded-ctl bg-raised p-0.5 shadow-island">
       <IconButton size="sm" title="Zoom out (Ctrl/⌘ −)" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.25)}>
         <MinusIcon />
       </IconButton>
-      <button className="h-7 w-12 rounded-md text-xs tabular-nums hover:bg-hover" title="Zoom to 100% (Shift 0)" onClick={zoomToActual}>
+      <button className="h-7 w-12 rounded-ctl text-xs tabular-nums hover:bg-hover" title="Zoom to 100% (Shift 0)" onClick={zoomToActual}>
         {Math.round(scale * 100)}%
       </button>
       <IconButton size="sm" title="Zoom in (Ctrl/⌘ =)" aria-label="Zoom in" onClick={() => zoomBy(1.25)}>
@@ -515,7 +525,7 @@ function badge(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
   ctx.font = `600 ${11 * px}px Inter Variable, system-ui, sans-serif`;
   const w = ctx.measureText(text).width + 12 * px;
   const h = 18 * px;
-  ctx.fillStyle = '#5b5bd6';
+  ctx.fillStyle = PAPER_ACCENT;
   ctx.beginPath();
   ctx.roundRect(x, y - h, w, h, 4 * px);
   ctx.fill();

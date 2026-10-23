@@ -32,8 +32,8 @@ export function Inspector() {
   const panel = useEditor((s) => s.panel);
   const libraryCount = useEditor((s) => s.library.length);
   return (
-    <aside className="flex w-[296px] min-h-0 flex-col border-l border-line bg-white max-[1000px]:w-[256px]">
-      <div className="flex h-10 shrink-0 items-end gap-4 border-b border-line px-4" role="tablist">
+    <aside className="flex w-[280px] min-h-0 flex-col border-l border-line bg-panel max-[1000px]:w-[248px]">
+      <div className="flex h-10 shrink-0 items-end gap-4 border-b border-line px-3.5" role="tablist">
         {(['properties', 'library'] as const).map((tab) => (
           <button
             key={tab}
@@ -95,7 +95,7 @@ function SelectionSection() {
 
   return (
     <Section
-      className="bg-accent-soft/40"
+      className="bg-accent-soft/30"
       title={
         <span className="text-accent">
           Selection <span className="ml-1 font-normal tracking-normal normal-case tabular-nums">{count} stroke{count === 1 ? '' : 's'}</span>
@@ -119,7 +119,7 @@ function SelectionSection() {
         {PALETTE.map((c) => (
           <button
             key={c}
-            className={cx('size-5 rounded-full border-2 border-white transition hover:scale-110', color === c ? 'ring-2 ring-accent' : 'ring-1 ring-black/10')}
+            className={cx('size-5 rounded-full border-2 border-panel', color === c ? 'ring-2 ring-accent' : 'ring-1 ring-white/15')}
             style={{ background: c }}
             aria-label={`Recolor to ${c}`}
             onClick={() => actions.setColor(c)}
@@ -136,7 +136,7 @@ function SelectionSection() {
         >
           <input
             ref={inputRef}
-            className="h-8 min-w-0 flex-1 rounded-lg border border-line bg-white px-2.5 outline-none select-text focus:border-accent focus:ring-3 focus:ring-accent/15"
+            className="h-7 min-w-0 flex-1 rounded-ctl bg-field px-2 outline-none select-text focus:ring-1 focus:ring-accent"
             value={name}
             aria-label="Object name"
             onChange={(e) => setName(e.target.value)}
@@ -147,14 +147,14 @@ function SelectionSection() {
               }
             }}
           />
-          <button type="submit" className="h-8 rounded-lg bg-accent px-3 font-medium text-white hover:bg-accent-strong">
+          <button type="submit" className="h-7 rounded-ctl bg-ink px-3 font-medium text-on-ink hover:bg-white">
             Save
           </button>
         </form>
       ) : (
         <div className="flex items-center gap-1">
           <TextButton
-            className="flex-1 border border-line bg-white font-medium text-accent"
+            className="flex-1 bg-field font-medium"
             title="Save to your library to reuse in any project"
             onClick={() => {
               setName(`Object ${getState().library.length + 1}`);
@@ -241,14 +241,13 @@ function StepSection() {
         <Switch label="Starts a new scene" checked={!!step.newScene && current > 0} disabled={current === 0} onChange={actions.setNewScene} />
         <span className="text-xs text-faint">{current === 0 ? 'First step' : step.newScene ? 'Canvas wipes first' : 'Draws on top'}</span>
       </Field>
-      <p className="text-xs leading-relaxed text-muted">
-        {step.strokes.length} stroke{step.strokes.length === 1 ? '' : 's'} · draws in {formatSeconds(drawing)} · starts at {formatClock(start)}
+      <p className="pt-1 text-[11px] leading-relaxed text-muted">
+        {step.strokes.length} stroke{step.strokes.length === 1 ? '' : 's'}, drawn in {formatSeconds(drawing)}, starting at {formatClock(start)}.
         <br />
-        Scene {sceneNumber}: step{first === last ? '' : 's'} {first + 1}
-        {first === last ? '' : `–${last + 1}`}
+        Scene {sceneNumber} {first === last ? `is step ${first + 1}` : `spans steps ${first + 1} to ${last + 1}`}.
       </p>
       <div className="flex gap-1">
-        <TextButton className="flex-1 border border-line" title="Duplicate step" onClick={actions.duplicateStep}>
+        <TextButton className="flex-1 bg-field" title="Duplicate step" onClick={actions.duplicateStep}>
           <DuplicateIcon />
           Duplicate
         </TextButton>
@@ -276,7 +275,7 @@ function ProjectSection() {
     <Section title="Project" className="border-b-0">
       <Field label="Canvas">
         <select
-          className="h-8 min-w-0 flex-1 rounded-lg border border-line bg-[#fafbfc] px-2 outline-none hover:border-[#d3d7dd] focus:border-accent"
+          className="h-7 min-w-0 flex-1 rounded-ctl bg-field px-2 outline-none hover:bg-field-hover focus:ring-1 focus:ring-accent"
           value={preset ? `${preset.width}x${preset.height}` : 'custom'}
           aria-label="Canvas size"
           onChange={(e) => {
@@ -312,8 +311,8 @@ function ProjectSection() {
         />
         <span className="w-10 shrink-0 text-right tabular-nums">{project.speed.toFixed(2)}×</span>
       </Field>
-      <p className="text-xs text-muted">
-        {formatClock(duration)} long · {scenes} scene{scenes === 1 ? '' : 's'} · {project.steps.length} step{project.steps.length === 1 ? '' : 's'}
+      <p className="pt-1 text-[11px] text-muted">
+        {formatClock(duration)} long, {scenes} scene{scenes === 1 ? '' : 's'}, {project.steps.length} step{project.steps.length === 1 ? '' : 's'}.
       </p>
     </Section>
   );
@@ -331,7 +330,7 @@ function PaperPicker() {
         {BACKGROUNDS.map((b) => (
           <button
             key={b.color}
-            className={cx('size-5 shrink-0 rounded-[5px] transition hover:scale-110', background.toLowerCase() === b.color ? 'ring-2 ring-accent ring-offset-1' : 'ring-1 ring-black/15')}
+            className={cx('size-5 shrink-0 rounded-ctl', background.toLowerCase() === b.color ? 'ring-2 ring-accent ring-offset-1 ring-offset-panel' : 'ring-1 ring-white/20')}
             style={{ background: b.color }}
             title={b.name}
             aria-label={`${b.name} paper`}
@@ -339,14 +338,14 @@ function PaperPicker() {
           />
         ))}
         <button
-          className={cx('grid size-5 shrink-0 place-items-center rounded-[5px] p-[2px] transition hover:scale-110', custom || open ? 'ring-2 ring-accent ring-offset-1' : '')}
+          className={cx('grid size-5 shrink-0 place-items-center rounded-ctl p-[2px]', custom || open ? 'ring-2 ring-accent ring-offset-1 ring-offset-panel' : '')}
           style={{ background: 'conic-gradient(#e03131, #f59f00, #fcc419, #40c057, #22b8cf, #1c7ed6, #7950f2, #e64980, #e03131)' }}
           title="Any color"
           aria-label="Custom paper color"
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >
-          <span className="size-full rounded-[3px] border-[1.5px] border-white" style={{ background }} />
+          <span className="size-full rounded-[3px] border-[1.5px] border-panel" style={{ background }} />
         </button>
       </div>
       {open && (

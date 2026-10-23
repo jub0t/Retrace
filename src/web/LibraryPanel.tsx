@@ -29,17 +29,17 @@ export function LibraryPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-line py-1.5 pr-1.5 pl-4">
+      <div className="flex items-center justify-between border-b border-line py-1.5 pr-1.5 pl-3.5">
         <span className="text-muted tabular-nums">
           {library.length} object{library.length === 1 ? '' : 's'}
         </span>
         <span className="flex items-center gap-0.5">
-          <TextButton className="h-7 px-2 text-xs" onClick={() => fileRef.current?.click()} title="Import objects from .json files">
+          <TextButton className="h-6 px-2" onClick={() => fileRef.current?.click()} title="Import objects from .json files">
             Import
           </TextButton>
           {library.length > 0 && (
             <TextButton
-              className="h-7 px-2 text-xs"
+              className="h-6 px-2"
               title="Download every object as one file"
               onClick={() => download(new Blob([JSON.stringify({ type: 'retrace/library', version: 1, assets: library })], { type: 'application/json' }), 'library.retrace-assets.json')}
             >
@@ -93,7 +93,7 @@ function AssetCard({ asset }: { asset: Asset }) {
 
   return (
     <div
-      className="group relative flex cursor-grab flex-col overflow-hidden rounded-lg ring-1 ring-line transition-shadow hover:ring-accent active:cursor-grabbing"
+      className="group relative flex cursor-grab flex-col overflow-hidden rounded-ctl bg-raised ring-1 ring-line hover:ring-accent active:cursor-grabbing"
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData(ASSET_DRAG_TYPE, asset.id);
@@ -107,7 +107,7 @@ function AssetCard({ asset }: { asset: Asset }) {
         {renaming ? (
           <input
             autoFocus
-            className="w-full min-w-0 rounded border border-accent bg-white px-1 outline-none select-text"
+            className="w-full min-w-0 rounded-ctl bg-field px-1 ring-1 ring-accent outline-none select-text"
             defaultValue={asset.name}
             onClick={(e) => e.stopPropagation()}
             onBlur={(e) => {
@@ -134,7 +134,7 @@ function AssetCard({ asset }: { asset: Asset }) {
       </div>
       <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         <button
-          className="grid size-6 place-items-center rounded-md bg-white/90 text-muted shadow-sm hover:text-ink [&_svg]:size-3.5"
+          className="grid size-6 place-items-center rounded-ctl bg-raised/90 text-muted shadow-sm hover:text-ink [&_svg]:size-3.5"
           title="Export as a file"
           aria-label={`Export ${asset.name}`}
           onClick={(e) => {
@@ -146,8 +146,8 @@ function AssetCard({ asset }: { asset: Asset }) {
         </button>
         <button
           className={cx(
-            'grid h-6 place-items-center rounded-md shadow-sm [&_svg]:size-3.5',
-            confirmDelete ? 'bg-red-600 px-1.5 text-[11px] font-medium text-white' : 'w-6 bg-white/90 text-muted hover:text-red-600',
+            'grid h-6 place-items-center rounded-ctl shadow-sm [&_svg]:size-3.5',
+            confirmDelete ? 'bg-danger px-1.5 text-[11px] font-medium text-white' : 'w-6 bg-raised/90 text-muted hover:text-danger',
           )}
           title="Delete from library"
           aria-label={`Delete ${asset.name}`}

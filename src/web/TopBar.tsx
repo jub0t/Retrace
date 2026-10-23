@@ -4,12 +4,12 @@
 import { useCallback, useState } from 'react';
 import { exportVideo } from './exportVideo';
 import { download, exportAnimatedSvg, openFile, projectFileName, reloadFromDisk, saveFile, saveFileAs } from './files';
-import { ChevronDownIcon, ExportIcon, GridIcon, HelpIcon, RedoIcon, UndoIcon } from './icons';
+import { ChevronDownIcon, ExportIcon, HelpIcon, RedoIcon, UndoIcon } from './icons';
 import { actions, getState, setState, useEditor } from './store';
 import { CommitInput, IconButton, Popover, TextButton, cx } from './ui';
 import { usePopover } from './usePopover';
 
-export const LOGO_URL = new URL('../../assets/logo-light.svg', import.meta.url).href;
+export const LOGO_URL = new URL('../../assets/logo-dark.svg', import.meta.url).href;
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl ';
 
 /** Project identity and file actions across the top of the editor. */
@@ -18,10 +18,9 @@ export function TopBar() {
   const projectName = useEditor((s) => s.projectName);
 
   return (
-    <header className="flex h-12 items-center gap-1 border-b border-line bg-white px-2">
+    <header className="flex h-11 items-center gap-1 border-b border-line bg-panel px-2">
       <TextButton title="All projects" onClick={() => void actions.goHome()}>
         <img src={LOGO_URL} alt="" className="size-5" />
-        <GridIcon />
         <span className="max-[700px]:hidden">Projects</span>
       </TextButton>
       <span className="text-faint">/</span>
@@ -29,7 +28,7 @@ export function TopBar() {
         value={projectName}
         aria-label="Project name"
         title="Rename project"
-        className="w-[min(280px,30vw)] border-transparent bg-transparent font-medium hover:border-line"
+        className="w-[min(280px,30vw)] bg-transparent font-medium hover:bg-field"
         onCommit={(name) => void actions.renameProject(projectId, name)}
       />
       <SaveStatus />
@@ -56,13 +55,14 @@ export function TopBar() {
 function SaveStatus() {
   const saveState = useEditor((s) => s.saveState);
   const stored = useEditor((s) => s.projectId !== null);
+  const trouble = !stored || saveState === 'error';
   const label = !stored ? 'Not saved in browser' : saveState === 'saving' ? 'Saving…' : saveState === 'error' ? "Couldn't save" : 'Saved';
+  // Quiet while everything is fine; colour only when something needs doing.
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-1.5 text-xs whitespace-nowrap text-muted"
+      className={cx('px-1.5 text-[11px] whitespace-nowrap', trouble ? 'text-danger' : 'text-faint')}
       title={stored ? 'Every change is saved in this browser automatically' : 'Browser storage is unavailable: save to a file to keep your work'}
     >
-      <span className={cx('size-[7px] rounded-full', !stored || saveState === 'error' ? 'bg-red-500' : saveState === 'saving' ? 'bg-amber-400' : 'bg-emerald-500')} />
       {label}
     </span>
   );
@@ -76,14 +76,14 @@ function LinkedFile() {
   return (
     <>
       <span
-        className="ml-1 inline-flex max-w-56 items-center gap-1.5 rounded-md bg-hover px-2 py-1 text-xs text-muted max-[900px]:hidden"
+        className="ml-1 inline-flex max-w-56 items-center gap-1.5 rounded-ctl bg-field px-2 py-1 text-[11px] text-muted max-[900px]:hidden"
         title="Linked file: Save writes here, and outside changes (e.g. from an AI agent) load live"
       >
-        <span className={cx('size-[6px] shrink-0 rounded-full', dirty ? 'bg-amber-500' : 'bg-emerald-600')} />
+        <span className={cx('size-[6px] shrink-0 rounded-full', dirty ? 'bg-accent' : 'bg-faint')} />
         <span className="truncate">{fileName}</span>
       </span>
       {diskChanged && (
-        <TextButton className="h-7 text-xs text-orange-700" onClick={reloadFromDisk} title="Discard local edits and load the version on disk">
+        <TextButton className="h-6 text-accent" onClick={reloadFromDisk} title="Discard local edits and load the version on disk">
           Changed on disk: reload
         </TextButton>
       )}
@@ -150,7 +150,7 @@ function ExportMenu() {
   return (
     <div className="relative ml-1" ref={ref}>
       <button
-        className="inline-flex h-[34px] items-center gap-1.5 rounded-lg bg-accent px-3 font-medium text-white transition-colors hover:bg-accent-strong disabled:opacity-80"
+        className="inline-flex h-7 items-center gap-1.5 rounded-ctl bg-ink px-3 font-medium text-on-ink transition-colors hover:bg-white disabled:opacity-80"
         aria-expanded={exportOpen}
         aria-haspopup="menu"
         title={`Export (${MOD}E)`}
@@ -164,8 +164,8 @@ function ExportMenu() {
           </>
         ) : (
           <>
-            <span className="relative h-1.5 w-16 overflow-hidden rounded-full bg-white/30">
-              <span className="absolute inset-y-0 left-0 bg-white" style={{ width: `${progress * 100}%` }} />
+            <span className="relative h-1.5 w-16 overflow-hidden rounded-full bg-black/15">
+              <span className="absolute inset-y-0 left-0 bg-on-ink" style={{ width: `${progress * 100}%` }} />
             </span>
             <span className="tabular-nums">{Math.round(progress * 100)}%</span>
           </>
@@ -186,9 +186,9 @@ function ExportMenu() {
 
 export function MenuItem({ title, hint, onClick, danger }: { title: string; hint?: string; onClick: () => void; danger?: boolean }) {
   return (
-    <button className={cx('flex flex-col items-start gap-px rounded-lg px-2.5 py-[7px] text-left hover:bg-hover', danger && 'text-red-600')} role="menuitem" onClick={onClick}>
+    <button className={cx('flex flex-col items-start gap-px rounded-ctl px-2.5 py-[7px] text-left hover:bg-hover', danger && 'text-danger')} role="menuitem" onClick={onClick}>
       <span>{title}</span>
-      {hint && <span className="text-[11.5px] text-muted">{hint}</span>}
+      {hint && <span className="text-[11px] text-muted">{hint}</span>}
     </button>
   );
 }
